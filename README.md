@@ -12,10 +12,6 @@ with the spacecraft they designed**, and finally see what NASA actually built an
 **Easiest:** double-click `index.html`. It opens in your web browser.
 (You need internet, because the 3D engine, styling and fonts load from the web.)
 
-**To share it with judges:** upload the folder to GitHub and turn on GitHub Pages
-(repository → Settings → Pages → Deploy from branch → `main` / root).
-You get a public link like `https://YOUR-NAME.github.io/space-mission-cube/` that needs no login.
-
 ## Pages
 
 - `index.html`: the game
@@ -97,8 +93,6 @@ Par and hints are calculated automatically.
 - [Webb "Build It Yourself" learning game (NASA)](https://science.nasa.gov/mission/webb/game-build-it-yourself/)
 - [Apollo 11 mission (NASA)](https://www.nasa.gov/mission/apollo-11/)
 
-**Before you submit:** open each link and double-check the facts quoted in `js/missions.js` and `js/finale3d.js`.
-
 ## Tools used
 
 HTML, Tailwind CSS (CDN), vanilla JavaScript, [Three.js](https://threejs.org/) r128 for 3D (CDN),
@@ -109,4 +103,4 @@ Google Fonts (Orbitron, Inter).
 The game concept (the Rubik's cube trade-off mechanic, the missions, the 3D finales and the NASA reveal)
 was designed by our team. An AI coding assistant (Claude) was used to help **write the code** (including
 the 3D models and finales) and draft the mission and tutorial text from our design spec. We reviewed,
-tested and edited the result. *(Team: update this section to describe exactly what you changed yourselves.)*
+tested and edited the result.
