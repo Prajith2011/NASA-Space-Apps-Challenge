@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Play · Space Mission Cube</title>
+  <meta name="description" content="Step-by-step tutorial for Space Mission Cube: the goal, the screen, the space science and a full walkthrough." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { display: ["Orbitron", "sans-serif"], sans: ["Inter", "system-ui", "sans-serif"] },
+          colors: { space: { 950: "#04060f", 900: "#080c1c", 800: "#0e1530", 700: "#16204a" } },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .tut-card { border: 1px solid rgb(100 116 139 / 0.35); background: rgb(8 12 28 / 0.8); border-radius: 16px; padding: 20px; }
+    .step-num { width: 30px; height: 30px; flex: none; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+      font-family: Orbitron, sans-serif; font-weight: 700; font-size: 13px; background: #22d3ee; color: #04060f; }
+    .callout { position: absolute; width: 26px; height: 26px; border-radius: 999px; background: #fbbf24; color: #04060f;
+      font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 4px rgb(251 191 36 / 0.25); }
+    .kbd { display: inline-block; padding: 1px 7px; border-radius: 6px; border: 1px solid rgb(148 163 184 / 0.5); background: rgb(22 32 74 / 0.9);
+      font-size: 12px; font-family: ui-monospace, monospace; }
+    .move-row { border-left: 3px solid; padding-left: 14px; }
+    nav a.active { color: #67e8f9; }
+    input[type=range] { accent-color: #22d3ee; width: 100%; }
+  </style>
+</head>
+
+<body class="bg-space-950 text-slate-200 font-sans min-h-screen">
+  <div class="starfield" aria-hidden="true"></div>
+
+  <header class="relative z-10 border-b border-cyan-500/20 bg-space-900/80 backdrop-blur sticky top-0">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
+      <a href="index.html" class="flex items-center gap-2">
+        <span class="cube-logo" aria-hidden="true"></span>
+        <span class="font-display font-bold tracking-wider text-sm sm:text-base text-cyan-300">SPACE MISSION CUBE</span>
+      </a>
+      <span class="text-slate-500 text-sm">/ Tutorial</span>
+      <a href="index.html" class="ml-auto rounded-lg bg-cyan-500 hover:bg-cyan-400 text-space-950 font-semibold px-4 py-2 text-sm">▶ Play now</a>
+    </div>
+  </header>
+
+  <main class="relative z-10 max-w-5xl mx-auto px-4 py-8">
+    <!-- Intro -->
+    <section class="text-center mb-10">
+      <p class="font-display text-xs tracking-[0.3em] text-cyan-400 mb-3">TUTORIAL</p>
+      <h1 class="font-display text-3xl sm:text-5xl font-black text-white mb-4">How to Play</h1>
+      <p class="text-lg text-slate-300 max-w-2xl mx-auto">You are a NASA mission engineer. A spacecraft design is broken. Fix it by swapping parts,
+        then launch it and fly the mission yourself. No space knowledge needed: this page explains everything.</p>
+    </section>
+
+    <!-- Table of contents -->
+    <nav class="tut-card mb-10">
+      <p class="font-display text-xs tracking-widest text-slate-400 mb-3">ON THIS PAGE</p>
+      <ol class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm list-decimal list-inside text-slate-300">
+        <li><a class="hover:text-cyan-300" href="#goal">The goal in 30 seconds</a></li>
+        <li><a class="hover:text-cyan-300" href="#screen">The screen, explained</a></li>
+        <li><a class="hover:text-cyan-300" href="#cube">Why it's like a Rubik's cube</a></li>
+        <li><a class="hover:text-cyan-300" href="#science">The space ideas, in plain English</a></li>
+        <li><a class="hover:text-cyan-300" href="#walkthrough">Walkthrough: fixing the Mars rover</a></li>
+        <li><a class="hover:text-cyan-300" href="#finale">Launch & the 3D finale</a></li>
+        <li><a class="hover:text-cyan-300" href="#scoring">Scoring: moves, time, par & stars</a></li>
+        <li><a class="hover:text-cyan-300" href="#tips">Tips & questions</a></li>
+      </ol>
+    </nav>
+
+    <!-- 1. Goal -->
+    <section id="goal" class="mb-14 scroll-mt-20">
+      <h2 class="font-display text-2xl text-white mb-4">1 · The goal in 30 seconds</h2>
+      <div class="grid sm:grid-cols-4 gap-3">
+        <div class="tut-card"><span class="step-num">1</span><p class="font-semibold text-white mt-3">Pick a mission</p><p class="text-sm text-slate-400 mt-1">A Mars rover, a space telescope or a Moon lander. Each one starts broken.</p></div>
+        <div class="tut-card"><span class="step-num">2</span><p class="font-semibold text-white mt-3">Read the checklist</p><p class="text-sm text-slate-400 mt-1">Questions like "Is it light enough for the rocket?" A red <b class="text-rose-300">✗ NO</b> means a problem.</p></div>
+        <div class="tut-card"><span class="step-num">3</span><p class="font-semibold text-white mt-3">Swap parts</p><p class="text-sm text-slate-400 mt-1">Click a part on the 3D spacecraft and choose a different one. Each swap = 1 move.</p></div>
+        <div class="tut-card"><span class="step-num">4</span><p class="font-semibold text-white mt-3">All YES → launch!</p><p class="text-sm text-slate-400 mt-1">When every answer is <b class="text-emerald-300">✓ YES</b>, launch it and play the mission in 3D.</p></div>
+      </div>
+    </section>
+
+    <!-- 2. Screen -->
+    <section id="screen" class="mb-14 scroll-mt-20">
+      <h2 class="font-display text-2xl text-white mb-2">2 · The screen, explained</h2>
+      <p class="text-slate-400 mb-5">This is a simplified picture of the game screen. The yellow numbers match the list below it.</p>
+
+      <div class="tut-card relative">
+        <!-- mini mock-up of the game screen -->
+        <div class="relative rounded-lg border border-slate-700 bg-space-900 p-3 text-[11px]">
+          <div class="flex items-center justify-between border-b border-slate-700 pb-2 mb-3">
+            <span class="font-display text-cyan-300">SPACE MISSION CUBE</span>
+            <span class="flex gap-2"><span class="hud-box !min-w-0 !py-0.5"><span class="hud-label">TIME</span><span class="hud-value text-xs">00:12.4</span></span><span class="hud-box !min-w-0 !py-0.5"><span class="hud-label">MOVES</span><span class="hud-value text-xs">2</span></span><span class="hud-box !min-w-0 !py-0.5"><span class="hud-label">PAR</span><span class="hud-value text-xs">2</span></span></span>
+          </div>
+          <div class="rounded border border-slate-700 p-2 mb-3">🎯 Your goal: turn every checklist answer into ✓ YES <div class="gauge-track mt-1 !h-2"><div class="gauge-fill progress" style="width:50%"></div></div></div>
+          <div class="grid grid-cols-5 gap-3">
+            <div class="col-span-3 rounded border border-cyan-500/40 h-40 flex items-center justify-center text-4xl bg-space-800/60">🚀 🛞</div>
+            <div class="col-span-2 space-y-1.5">
+              <div class="rounded border border-rose-500/50 bg-rose-950/40 p-1.5">✗ Is it light enough for the rocket?<br><span class="text-amber-200">💡 Make it lighter…</span></div>
+              <div class="rounded border border-rose-500/50 bg-rose-950/40 p-1.5">✗ Enough power in a dust storm?</div>
+              <div class="rounded border border-emerald-400/40 bg-emerald-950/30 p-1.5">✓ Can it send home enough science?</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 mt-3">
+            <div class="rounded border border-slate-600 p-1.5">⚡ Power Source<br><b class="text-white">Large solar wings</b></div>
+            <div class="rounded border border-slate-600 p-1.5">🔋 Battery Bank<br><b class="text-white">Large pack</b></div>
+            <div class="rounded border border-slate-600 p-1.5">🔬 Science Suite<br><b class="text-white">Chemistry lab</b></div>
+          </div>
+          <span class="callout" style="top:4px; right:-8px">1</span>
+          <span class="callout" style="top:48px; left:-8px">2</span>
+          <span class="callout" style="top:120px; left:22%">3</span>
+          <span class="callout" style="top:96px; right:-8px">4</span>
+          <span class="callout" style="bottom:20px; left:-8px">5</span>
+        </div>
+
+        <ol class="mt-6 space-y-3 text-sm">
+          <li class="flex gap-3"><span class="callout !static">1</span><div><b class="text-white">Timer, moves & par.</b> The timer starts on your first swap. <b>Par</b> is the fewest moves that can possibly solve the mission.</div></li>
+          <li class="flex gap-3"><span class="callout !static">2</span><div><b class="text-white">Goal bar.</b> Shows how many checklist answers are YES so far.</div></li>
+          <li class="flex gap-3"><span class="callout !static">3</span><div><b class="text-white">3D spacecraft.</b> <b>Drag</b> to rotate, <b>scroll or pinch</b> to zoom, <b>hover</b> to see a part's name, and <b>click a part</b> to swap it. The rocket standing next to it is the launch vehicle (also clickable, and not to scale).</div></li>
+          <li class="flex gap-3"><span class="callout !static">4</span><div><b class="text-white">Mission checklist.</b> Every problem is a plain-English question. A ✗ NO answer explains <i>why</i>, gives a 💡 tip and lists the <b>parts to try</b> (click one to open it). Hover a question and the related parts glow in 3D.</div></li>
+          <li class="flex gap-3"><span class="callout !static">5</span><div><b class="text-white">Parts list.</b> The same parts as the 3D model, as cards with their numbers. Use whichever you like.</div></li>
+        </ol>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-3 mt-4 text-sm">
+        <div class="tut-card"><p class="font-semibold text-white mb-1">🔁 The swap drawer</p><p class="text-slate-400">When you open a part, you see all the alternatives. Green numbers in brackets are better than what's installed now, red ones are worse.</p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">🟢 Easy mode (top right)</p><p class="text-slate-400">On by default. Each option shows which checklist answers it would <span class="text-emerald-300">fix</span> or <span class="text-rose-300">break</span> before you pick it. Turn it off for a real challenge.</p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">📊 Show the numbers</p><p class="text-slate-400">Open this box under the parts list to see every gauge with exact values (kg, watts, $) and a short science fact.</p></div>
+      </div>
+    </section>
+
+    <!-- 3. Rubik's cube -->
+    <section id="cube" class="mb-14 scroll-mt-20">
+      <h2 class="font-display text-2xl text-white mb-4">3 · Why it's like a Rubik's cube</h2>
+      <div class="tut-card grid sm:grid-cols-2 gap-6 items-center">
+        <div>
+          <p class="text-slate-300 mb-3">On a Rubik's cube, twisting one face to fix it scrambles the faces next to it. Spacecraft are the same, because every part affects several things at once:</p>
+          <ul class="text-sm text-slate-300 space-y-2">
+            <li>⚡ A <b>bigger solar panel</b> makes more power… but adds <b>mass</b>.</li>
+            <li>🚀 A <b>stronger rocket</b> can lift more… but costs more <b>budget</b>.</li>
+            <li>🔬 <b>Better instruments</b> do more science… but use more <b>power</b>.</li>
+          </ul>
+          <p class="text-slate-400 text-sm mt-3">So a move can fix one checklist answer and break another. When that happens, the game tells you exactly what broke and why. That's not a mistake, it's the puzzle! Real engineers call this a <b class="text-white">trade-off</b>.</p>
+        </div>
+        <div class="text-center">
+          <div class="inline-grid grid-cols-3 gap-1.5 p-3 rounded-xl bg-black/40">
+            <div class="w-14 h-14 rounded bg-emerald-500/80 flex items-center justify-center text-xs font-bold text-space-950">MASS</div>
+            <div class="w-14 h-14 rounded bg-emerald-500/80"></div>
+            <div class="w-14 h-14 rounded bg-rose-500/80 flex items-center justify-center text-xs font-bold text-space-950">COST</div>
+            <div class="w-14 h-14 rounded bg-emerald-500/80"></div>
+            <div class="w-14 h-14 rounded bg-cyan-400/80 flex items-center justify-center text-xl">🔁</div>
+            <div class="w-14 h-14 rounded bg-emerald-500/80"></div>
+            <div class="w-14 h-14 rounded bg-rose-500/80 flex items-center justify-center text-xs font-bold text-space-950">POWER</div>
+            <div class="w-14 h-14 rounded bg-emerald-500/80"></div>
+            <div class="w-14 h-14 rounded bg-emerald-500/80 flex items-center justify-center text-xs font-bold text-space-950">DATA</div>
+          </div>
+          <p class="text-xs text-slate-500 mt-2">Get every face green, and the mission is ready.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Science -->
+    <section id="science" class="mb-14 scroll-mt-20">
+      <h2 class="font-display text-2xl text-white mb-2">4 · The space ideas, in plain English</h2>
+      <p class="text-slate-400 mb-5">These are the things the checklist asks about. You don't need to memorise them: the game explains each one when it matters.</p>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div class="tut-card"><p class="font-semibold text-white mb-1">🏋️ Mass & the launch rocket</p><p class="text-sm text-slate-400">Every rocket can only lift a certain mass. If the spacecraft is too heavy, you must make it lighter or buy a bigger (more expensive) rocket. <i>Like a lift with a weight limit.</i></p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">⚡ Power (watts)</p><p class="text-sm text-slate-400">Solar panels or a nuclear generator <b>make</b> power, and instruments, heaters and radios <b>use</b> it. You need to make at least as much as you use. On Mars, dust storms block sunlight, so solar panels make much less.</p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">📡 Science & data</p><p class="text-sm text-slate-400">Instruments collect science, but it only counts once the data reaches Earth. A weak radio can't send everything home. <i>Like taking 1,000 photos with a slow internet connection.</i></p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">📦 Fitting in the nose cone</p><p class="text-sm text-slate-400">The spacecraft rides inside the rocket's nose cone (the "fairing"). Anything wider than the nose cone must fold up for launch, like the Webb telescope's mirror.</p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">❄️ Cold infrared cameras</p><p class="text-sm text-slate-400">Infrared light is heat. A warm telescope "glows" and hides faint galaxies, so infrared cameras must be extremely cold, using a sunshield or coolers.</p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">💰 Budget</p><p class="text-sm text-slate-400">Every part costs money (in $ millions), and the mission has a cost cap. Stronger rockets and fancy parts eat the budget fast.</p></div>
+      </div>
+
+      <!-- Interactive rocket equation -->
+      <div class="tut-card mt-4">
+        <p class="font-semibold text-white mb-1">🚀 Δv ("delta-v"): the fuel power to change speed. Try it!</p>
+        <p class="text-sm text-slate-400 mb-4">Δv is how much a spacecraft can change its speed using its fuel. To land on the Moon, the lander needs enough Δv to slow down from orbit. The <b>rocket equation</b> says
+          <span class="text-white whitespace-nowrap">Δv = efficiency × 9.8 × ln(full mass ÷ empty mass)</span>. Move the sliders and see the surprise: <b class="text-cyan-300">making the lander lighter helps more than you'd think</b>, because the fuel has less to push.</p>
+        <div class="grid sm:grid-cols-2 gap-5">
+          <div>
+            <label class="text-sm text-slate-300">Lander mass without fuel: <b id="dryOut" class="text-white"></b></label>
+            <input id="dry" type="range" min="6500" max="10000" step="100" value="8910" />
+            <label class="text-sm text-slate-300 mt-3 block">Fuel: <b id="fuelOut" class="text-white"></b></label>
+            <input id="fuel" type="range" min="6000" max="10000" step="100" value="8200" />
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-1"><span class="text-slate-300">Δv</span><span id="dvOut" class="font-display"></span></div>
+            <div class="gauge-track"><div id="dvBar" class="gauge-fill" style="width:50%"></div><div class="gauge-limit" style="left:80%"></div></div>
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>White line = 2,100 m/s needed to land (game value)</span></div>
+            <p id="dvMsg" class="text-sm mt-3"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Walkthrough -->
+    <section id="walkthrough" class="mb-14 scroll-mt-20">
+      <h2 class="font-display text-2xl text-white mb-2">5 · Walkthrough: fixing the Mars rover</h2>
+      <p class="text-slate-400 mb-5">Here is a complete solve of the first mission, with the game's real numbers. Try it yourself first if you'd like a spoiler-free game!</p>
+
+      <div class="tut-card space-y-6">
+        <div class="move-row border-rose-400">
+          <p class="font-display text-xs text-rose-300 mb-1">THE STARTING DESIGN (BROKEN)</p>
+          <p class="text-sm text-slate-300">Atlas V 541 rocket, standard chassis, <b>large solar wings</b>, large battery, <b>full chemistry lab</b>, relay radio.</p>
+          <ul class="text-sm mt-2 space-y-1">
+            <li class="text-rose-300">✗ Light enough for the rocket? The spacecraft weighs 3,750 kg, but the rocket lifts only 3,700 kg.</li>
+            <li class="text-rose-300">✗ Enough power in a dust storm? The solar wings drop to 90 W, plus 60 W of battery reserve = 150 W, but the rover needs 180 W.</li>
+            <li class="text-emerald-300">✓ Science returned &nbsp; ✓ Budget ($1,885M of $1,900M)</li>
+          </ul>
+        </div>
+
+        <div class="move-row border-amber-400">
+          <p class="font-display text-xs text-amber-300 mb-1">A TEMPTING TRAP (DON'T DO THIS)</p>
+          <p class="text-sm text-slate-300">"Too heavy? Just buy a bigger rocket!" Swapping to the <b>Delta IV Heavy</b> fixes the mass… but the mission now costs <b>$2,065M</b>, over the $1,900M budget. One fix, one new problem. Classic Rubik's cube!</p>
+        </div>
+
+        <div class="move-row border-cyan-400">
+          <p class="font-display text-xs text-cyan-300 mb-1">MOVE 1: POWER SOURCE → NUCLEAR GENERATOR (MMRTG)</p>
+          <p class="text-sm text-slate-300">Dust can't block a nuclear generator, and it's lighter than the solar wings (45 kg vs 90 kg).</p>
+          <ul class="text-sm mt-2 space-y-1">
+            <li class="text-rose-300">✗ Mass: now 3,705 kg, so still 5 kg too heavy!</li>
+            <li class="text-rose-300">✗ Power: 110 W + 60 W battery = 170 W, still short of the 180 W needed.</li>
+            <li class="text-rose-300">✗ Budget: the generator costs more, so the total is now $1,955M (over $1,900M).</li>
+          </ul>
+          <p class="text-sm text-slate-400 mt-2">Looks worse… but now the real culprit is easy to spot: the power-hungry, heavy, expensive <b>chemistry lab</b>.</p>
+        </div>
+
+        <div class="move-row border-emerald-400">
+          <p class="font-display text-xs text-emerald-300 mb-1">MOVE 2: SCIENCE SUITE → CAMERAS, LASER SPECTROMETER & DRILL</p>
+          <p class="text-sm text-slate-300">It's lighter (75 kg vs 120 kg), uses less power (80 W vs 110 W) and costs less ($200M vs $350M), but it still meets the science goal.</p>
+          <ul class="text-sm mt-2 space-y-1 text-emerald-300">
+            <li>✓ Mass: 3,660 kg ≤ 3,700 kg</li>
+            <li>✓ Power: 170 W ≥ 150 W needed</li>
+            <li>✓ Science: 6 points ≥ 6 goal</li>
+            <li>✓ Budget: $1,805M ≤ $1,900M</li>
+          </ul>
+          <p class="text-sm text-white mt-2">🎉 Solved in 2 moves, which matches par for ⭐⭐⭐!</p>
+        </div>
+
+        <div class="move-row border-slate-500">
+          <p class="font-display text-xs text-slate-300 mb-1">OTHER WAYS TO WIN</p>
+          <p class="text-sm text-slate-400">You could also keep the solar wings and switch to the <b>lightweight chassis + the same science suite</b>. That's 2 moves too! There's rarely one perfect answer in engineering. At the end, the game shows what NASA chose for Curiosity (the nuclear generator) and why.</p>
+        </div>
+      </div>
+      <a href="index.html#mars-rover" class="inline-block mt-4 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-space-950 font-semibold px-5 py-3">Try the Mars rover now →</a>
+    </section>
+
+    <!-- 6. Finale -->
+    <section id="finale" class="mb-14 scroll-mt-20">
+      <h2 class="font-display text-2xl text-white mb-2">6 · Launch & the 3D finale</h2>
+      <p class="text-slate-400 mb-5">When the checklist is all YES, press <b class="text-emerald-300">🚀 LAUNCH THE MISSION!</b> You watch your rocket lift off, then you <b>play the mission with the spacecraft you designed</b>. Your design choices really matter here.</p>
+      <div class="grid sm:grid-cols-3 gap-3 text-sm">
+        <div class="tut-card">
+          <p class="text-3xl mb-2">🌕</p>
+          <p class="font-semibold text-white mb-1">Moon lander: land it!</p>
+          <p class="text-slate-400 mb-3">Slow down, steer to the green circle, and touch down gently (below 4 m/s, not sliding sideways). <b>Your design's Δv decides how much fuel you get.</b></p>
+          <p class="text-xs text-slate-300"><span class="kbd">Space</span> or <span class="kbd">↑</span> thrust · <span class="kbd">←</span> <span class="kbd">→</span> move sideways · or tap the on-screen buttons</p>
+        </div>
+        <div class="tut-card">
+          <p class="text-3xl mb-2">🔴</p>
+          <p class="font-semibold text-white mb-1">Mars rover: drive it!</p>
+          <p class="text-slate-400 mb-3">Drive to 3 glowing science targets. Driving drains the battery, and your power source recharges it. A <b>dust storm</b> hits after the first sample: solar rovers slow down, nuclear ones keep going.</p>
+          <p class="text-xs text-slate-300"><span class="kbd">↑</span> <span class="kbd">↓</span> drive · <span class="kbd">←</span> <span class="kbd">→</span> steer · or <span class="kbd">W A S D</span> · or the on-screen buttons</p>
+        </div>
+        <div class="tut-card">
+          <p class="text-3xl mb-2">🔭</p>
+          <p class="font-semibold text-white mb-1">Telescope: unfold it!</p>
+          <p class="text-slate-400 mb-3">It launched folded like origami. Click the deployment steps <b>in the right order</b>. Pick wrong, and the game explains why that step has to wait.</p>
+          <p class="text-xs text-slate-300">Click the step buttons · drag to look around</p>
+        </div>
+      </div>
+      <p class="text-sm text-slate-400 mt-4">Afterwards, the <b class="text-white">NASA Reveal</b> compares your design with what NASA actually built and explains their choices. Want to skip the finale? There's a "Skip to NASA reveal" button.</p>
+    </section>
+
+    <!-- 7. Scoring -->
+    <section id="scoring" class="mb-14 scroll-mt-20">
+      <h2 class="font-display text-2xl text-white mb-4">7 · Scoring: moves, time, par & stars</h2>
+      <div class="tut-card">
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-slate-800">
+            <tr><td class="py-2 pr-4 text-white font-semibold whitespace-nowrap">Moves</td><td class="py-2 text-slate-400">Every part swap is 1 move. Fewer is better.</td></tr>
+            <tr><td class="py-2 pr-4 text-white font-semibold whitespace-nowrap">Time</td><td class="py-2 text-slate-400">Like speedcubing: the timer starts on your first move and stops when the mission is solved.</td></tr>
+            <tr><td class="py-2 pr-4 text-white font-semibold whitespace-nowrap">Par</td><td class="py-2 text-slate-400">The fewest moves that can possibly solve the mission (the game calculates it).</td></tr>
+            <tr><td class="py-2 pr-4 whitespace-nowrap">⭐⭐⭐</td><td class="py-2 text-slate-400">Solved in par moves.</td></tr>
+            <tr><td class="py-2 pr-4 whitespace-nowrap">⭐⭐</td><td class="py-2 text-slate-400">Up to 2 moves more than par.</td></tr>
+            <tr><td class="py-2 pr-4 whitespace-nowrap">⭐</td><td class="py-2 text-slate-400">Solved, using more moves.</td></tr>
+            <tr><td class="py-2 pr-4 text-white font-semibold whitespace-nowrap">💡 Hint</td><td class="py-2 text-slate-400">Points to a part worth changing (it glows in 3D). Hints are counted on your results.</td></tr>
+            <tr><td class="py-2 pr-4 text-white font-semibold whitespace-nowrap">Best scores</td><td class="py-2 text-slate-400">Your best moves and time are saved in this browser and shown on the mission cards.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 8. Tips -->
+    <section id="tips" class="mb-14 scroll-mt-20">
+      <h2 class="font-display text-2xl text-white mb-4">8 · Tips & questions</h2>
+      <div class="space-y-3">
+        <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">Where do I start?</summary><p class="text-sm text-slate-400 mt-2">Read the first ✗ NO in the checklist and click one of its "Parts to try" buttons. Keep Easy mode on, and each option will tell you what it fixes or breaks.</p></details>
+        <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">My move broke something. Did I mess up?</summary><p class="text-sm text-slate-400 mt-2">No, that's the puzzle! Read the red message: it says exactly which number went wrong. Often one more swap fixes everything (see the walkthrough above).</p></details>
+        <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">Look for the "culprit" part</summary><p class="text-sm text-slate-400 mt-2">If one part appears in several ✗ answers (for example, a heavy, power-hungry instrument), swapping just that part can fix many problems at once.</p></details>
+        <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">Is there only one right answer?</summary><p class="text-sm text-slate-400 mt-2">No. Every mission has several valid designs. The reveal screen tells you how many and compares yours with NASA's real choice.</p></details>
+        <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">Are the numbers real?</summary><p class="text-sm text-slate-400 mt-2">The part numbers are simplified so the puzzle works. The facts on the "What NASA Built" screen are real and link to NASA sources.</p></details>
+        <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">The 3D view is blank</summary><p class="text-sm text-slate-400 mt-2">The 3D engine loads from the internet, so check your connection and refresh. You can still play with the parts list.</p></details>
+      </div>
+    </section>
+
+    <section class="text-center mb-6">
+      <a href="index.html" class="inline-block rounded-xl bg-emerald-400 hover:bg-emerald-300 text-space-950 font-display font-bold tracking-wider px-8 py-4">🚀 START PLAYING</a>
+    </section>
+  </main>
+
+  <footer class="relative z-10 text-center text-xs text-slate-500 py-6 px-4">
+    Made for the 2026 NASA Space Apps Challenge, "Space Mission Design Game".
+  </footer>
+
+  <script>
+    // Interactive rocket-equation demo (same formula and numbers as the lunar lander mission)
+    (function () {
+      const dry = document.getElementById("dry"), fuel = document.getElementById("fuel");
+      const ISP = 305, G0 = 9.80665, NEED = 2100;
+      function update() {
+        const d = +dry.value, f = +fuel.value;
+        const dv = Math.round(ISP * G0 * Math.log((d + f) / d));
+        document.getElementById("dryOut").textContent = d.toLocaleString("en-US") + " kg";
+        document.getElementById("fuelOut").textContent = f.toLocaleString("en-US") + " kg";
+        const out = document.getElementById("dvOut");
+        out.textContent = dv.toLocaleString("en-US") + " m/s";
+        out.style.color = dv >= NEED ? "#6ee7b7" : "#fb7185";
+        const bar = document.getElementById("dvBar");
+        bar.style.width = Math.min((dv / NEED) * 80, 100) + "%";
+        bar.className = "gauge-fill " + (dv >= NEED ? "ok" : "bad");
+        document.getElementById("dvMsg").innerHTML = dv >= NEED
+          ? '<span class="text-emerald-300">✓ Enough Δv to land!</span>'
+          : `<span class="text-rose-300">✗ ${(NEED - dv).toLocaleString("en-US")} m/s short. Try removing mass instead of only adding fuel.</span>`;
+      }
+      dry.addEventListener("input", update);
+      fuel.addEventListener("input", update);
+      update();
+    })();
+  </script>
+</body>
+</html>
