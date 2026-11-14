@@ -7,8 +7,6 @@ Spacecraft engineering works like a Rubik's cube: fixing one thing usually break
 How to run it
 Easiest: double-click index.html. It opens in your web browser. (You need internet, because the 3D engine, styling and fonts load from the web.)
 
-To share it with judges: upload the folder to GitHub and turn on GitHub Pages (repository → Settings → Pages → Deploy from branch → main / root). You get a public link like https://YOUR-NAME.github.io/space-mission-cube/ that needs no login.
-
 Pages
 index.html: the game
 tutorial.html: the detailed tutorial (the goal, the screen explained, plain-English space science, an interactive rocket-equation slider, a full walkthrough, finale controls and scoring)
@@ -64,7 +62,7 @@ Apollo 11 mission (NASA)
 Before you submit: open each link and double-check the facts quoted in js/missions.js and js/finale3d.js.
 
 Tools used
-HTML, Tailwind CSS (CDN), vanilla JavaScript, Three.js r128 for 3D (CDN), Google Fonts (Orbitron, Inter).
+HTML, Tailwind CSS (CDN), vanilla JavaScript, Three.js r128 for 3D (CDN), Google Fonts (Orbitron, Inter), Claude Code.
 
 Use of AI (required disclosure for Space Apps)
 The game concept (the Rubik's cube trade-off mechanic, the missions, the 3D finales and the NASA reveal) was designed by our team. An AI coding assistant (Claude) was used to help write the code (including the 3D models and finales) and draft the mission and tutorial text from our design spec. We reviewed, tested and edited the result. (Team: update this section to describe exactly what you changed yourselves.)
