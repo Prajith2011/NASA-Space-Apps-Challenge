@@ -31,6 +31,8 @@ You get a public link like `https://YOUR-NAME.github.io/space-mission-cube/` tha
 5. Play the 3D finale, then see **Your Design vs. What NASA Built**.
 
 **Easy mode** (on by default) shows what each option would fix or break before you choose it.
+The **☀️/🌙 button** (top right) switches between dark mode (deep space) and light mode (a bright
+clean-room assembly hall). The first visit follows the computer's own setting.
 **Hint** makes a useful part glow in 3D. Best times and fewest moves are saved in the browser.
 
 ## The 3D finales
@@ -57,12 +59,14 @@ Each mission has **more than one valid solution**, because real engineering rare
 space-mission-cube/
 ├── index.html          The game page (loads Three.js, Tailwind, fonts)
 ├── tutorial.html       Detailed tutorial page
-├── css/styles.css      Gauges, checklist, 3D overlay, finale buttons, animations
+├── css/styles.css      Gauges, checklist, 3D overlay, finale buttons, animations, light-mode colours
 └── js/
+    ├── theme.js        Dark/light mode: follows the computer's setting, ☀️/🌙 button remembers your choice
     ├── missions.js     ← Mission data: parts, numbers, constraint maths, checklist wording, NASA facts
     ├── engine.js       Game state, moves, timer, par/hint solver, saved scores
-    ├── models.js       3D models built from simple shapes (rover, telescope, lander, rockets)
-    ├── viewer3d.js     3D workshop: rotate/zoom, hover labels, click-to-swap, highlight glow
+    ├── models.js       Detailed 3D models + procedural textures (solar cells, gold foil, Mars/Moon soil)
+    │                   and the reflection environment
+    ├── viewer3d.js     3D workshop: filmic lighting, soft shadows, rotate/zoom, click-to-swap, highlight glow
     ├── finale3d.js     Launch cinematic + the three playable 3D missions
     └── ui.js           Screens: mission select, workshop, swap drawer, win screen, reveal
 ```

@@ -3,6 +3,10 @@
    ---------------------------------------------------------------------
    Shows the spacecraft you are designing. Drag to rotate, scroll/pinch
    to zoom, hover a part to see its name, click a part to swap it.
+
+   Graphics: filmic tone mapping, reflections (environment map), soft
+   shadows and textured ground. Dark theme = deep space, light theme =
+   a bright clean-room "assembly hall".
    ===================================================================== */
 
 (function () {
@@ -10,12 +14,12 @@
 
   /* Camera framing for each mission */
   const FRAMING = {
-    "mars-rover": { cam: [7, 4.5, 8], target: [-1.5, 1.6, 0], ground: 0x7a3418 },
+    "mars-rover": { cam: [7, 4.2, 8], target: [-1.4, 1.5, 0], ground: "mars" },
     "deep-space-telescope": { cam: [9, 5.5, 10], target: [-2, 2.2, 0], ground: null },
-    "lunar-lander": { cam: [7, 4.5, 8.5], target: [-1.5, 1.8, 0], ground: 0x5c5c5c },
+    "lunar-lander": { cam: [7, 4.4, 8.5], target: [-1.4, 1.8, 0], ground: "moon" },
   };
 
-  let renderer, scene, camera, controls, craftRoot, groundMesh;
+  let renderer, scene, camera, controls, craftRoot, groundMesh, stars, hemi, sun;
   let container = null;
   let paused = false;
   let hoverSlot = null;
@@ -23,36 +27,55 @@
   let pickCb = () => {};
   let hoverCb = () => {};
   let popTargets = [], popStart = 0;
+  let currentMissionId = null;
+  const envMaps = {};
   const raycaster = new T.Raycaster();
   const pointer = new T.Vector2();
   let downAt = null;
+
+  const theme = () => (document.documentElement.dataset.theme === "light" ? "light" : "dark");
 
   function init() {
     renderer = new T.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputEncoding = T.sRGBEncoding;
+    renderer.toneMapping = T.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = T.PCFSoftShadowMap;
 
     scene = new T.Scene();
-    scene.background = new T.Color(0x060a16);
-    scene.add(makeStars(1500, 90));
+    stars = makeStars(1800, 90);
+    scene.add(stars);
 
-    scene.add(new T.HemisphereLight(0xc8d8ff, 0x202030, 0.75));
-    const sun = new T.DirectionalLight(0xffffff, 1.15);
-    sun.position.set(6, 10, 7);
+    hemi = new T.HemisphereLight(0xc8d8ff, 0x1a1a24, 0.45);
+    scene.add(hemi);
+
+    // Key light ("the Sun") casts soft shadows
+    sun = new T.DirectionalLight(0xfff4e0, 2.2);
+    sun.position.set(7, 12, 8);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sun.shadow.camera, { left: -11, right: 11, top: 11, bottom: -11, near: 1, far: 45 });
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 0.02;
+    sun.shadow.radius = 4;
     scene.add(sun);
-    const rim = new T.DirectionalLight(0x22d3ee, 0.45);
-    rim.position.set(-7, 4, -6);
+
+    // Cool rim light from behind for a cinematic edge glow
+    const rim = new T.DirectionalLight(0x6fd8ff, 0.9);
+    rim.position.set(-8, 5, -7);
     scene.add(rim);
 
-    camera = new T.PerspectiveCamera(40, 1, 0.1, 500);
+    camera = new T.PerspectiveCamera(38, 1, 0.1, 500);
     controls = new T.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.minDistance = 4;
     controls.maxDistance = 30;
-    controls.maxPolarAngle = Math.PI * 0.55;
+    controls.maxPolarAngle = Math.PI * 0.53;
     controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.7;
+    controls.autoRotateSpeed = 0.6;
     controls.addEventListener("start", () => (controls.autoRotate = false));
 
     const el = renderer.domElement;
@@ -78,23 +101,56 @@
     el.addEventListener("pointerleave", () => { hoverSlot = null; hoverCb(null); });
 
     new ResizeObserver(resize).observe(document.body);
+    window.addEventListener("themechange", applyTheme);
+    applyTheme();
     loop();
+  }
+
+  /* Background gradients drawn on a canvas */
+  function gradientTexture(stops, radial) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 512;
+    const g = c.getContext("2d");
+    const grad = radial ? g.createRadialGradient(256, 180, 20, 256, 256, 420) : g.createLinearGradient(0, 0, 0, 512);
+    stops.forEach(([o, col]) => grad.addColorStop(o, col));
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 512, 512);
+    const t = new T.CanvasTexture(c);
+    t.encoding = T.sRGBEncoding;
+    return t;
+  }
+  const backgrounds = {};
+
+  /* Switch the 3D scene between space (dark) and clean room (light) */
+  function applyTheme() {
+    if (!scene) return;
+    const t = theme();
+    if (!backgrounds[t]) {
+      backgrounds[t] = t === "dark"
+        ? gradientTexture([[0, "#13224a"], [0.55, "#070c1d"], [1, "#03050b"]], true)
+        : gradientTexture([[0, "#f7f9fc"], [0.6, "#dde5f0"], [1, "#c5d1e0"]], false);
+    }
+    scene.background = backgrounds[t];
+    const envKind = t === "dark" ? "space" : "studio";
+    if (!envMaps[envKind]) envMaps[envKind] = Models.makeEnvMap(renderer, envKind);
+    scene.environment = envMaps[envKind];
+    stars.visible = t === "dark";
+    hemi.intensity = t === "dark" ? 0.45 : 0.8;
+    hemi.color.set(t === "dark" ? 0xc8d8ff : 0xffffff);
+    hemi.groundColor.set(t === "dark" ? 0x1a1a24 : 0x9aa6b8);
+    if (currentMissionId) buildGround(FRAMING[currentMissionId]);
   }
 
   function makeStars(n, radius) {
     const pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      const v = new T.Vector3().randomDirection ? new T.Vector3().randomDirection() : randomDir();
-      v.multiplyScalar(radius * (0.6 + Math.random() * 0.4));
-      pos.set([v.x, v.y, v.z], i * 3);
+      const u = Math.random() * 2 - 1, t = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
+      const r = radius * (0.6 + Math.random() * 0.4);
+      pos.set([s * Math.cos(t) * r, u * r, s * Math.sin(t) * r], i * 3);
     }
     const geo = new T.BufferGeometry();
     geo.setAttribute("position", new T.BufferAttribute(pos, 3));
-    return new T.Points(geo, new T.PointsMaterial({ color: 0xffffff, size: 0.35, sizeAttenuation: true }));
-  }
-  function randomDir() {
-    const u = Math.random() * 2 - 1, t = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
-    return new T.Vector3(s * Math.cos(t), u, s * Math.sin(t));
+    return new T.Points(geo, new T.PointsMaterial({ color: 0xffffff, size: 0.32, sizeAttenuation: true, transparent: true, opacity: 0.9 }));
   }
 
   function slotOf(obj) {
@@ -144,8 +200,24 @@
     });
   }
 
+  /* Ground: Mars or Moon soil fading into the background; clean-room floor for the telescope in light mode */
+  function buildGround(f) {
+    if (groundMesh) { scene.remove(groundMesh); disposeTree(groundMesh); groundMesh = null; }
+    // (no texture repeat here: in this Three.js version the fade mask would repeat too)
+    let map = null;
+    if (f.ground) map = Models.groundTexture(f.ground);
+    else if (theme() === "light") map = Models.floorTex();
+    else return; // telescope floats in space in dark mode
+    groundMesh = new T.Mesh(
+      new T.CircleGeometry(16, 64),
+      new T.MeshStandardMaterial({ map, roughness: 0.95, metalness: 0, alphaMap: Models.fadeTex(), transparent: true })
+    );
+    groundMesh.rotation.x = -Math.PI / 2;
+    groundMesh.receiveShadow = true;
+    scene.add(groundMesh);
+  }
+
   /* ---------- Public: show a mission's spacecraft ---------- */
-  let currentMissionId = null;
   function show(mission, sel, swappedSlot) {
     if (!renderer) init();
     const parts = Engine.partsFor(mission, sel);
@@ -155,7 +227,7 @@
     craftRoot = new T.Group();
 
     const craft = Models.buildCraft(mission.id, parts);
-    if (mission.id === "deep-space-telescope") craft.position.y = 0.6;
+    if (mission.id === "deep-space-telescope") craft.position.y = 0.9;
     craftRoot.add(craft);
 
     // The launch rocket stands next to the spacecraft (not to scale)
@@ -164,27 +236,21 @@
     const rocketGroup = new T.Group();
     if (parts.launch) rocketGroup.userData.slot = "launch";
     rocketGroup.add(rocket);
-    rocketGroup.position.set(mission.id === "deep-space-telescope" ? -7.5 : -5.5, 0, -1);
+    rocketGroup.position.set(mission.id === "deep-space-telescope" ? -7.5 : -5.5, 0.15, -1);
     rocketGroup.scale.setScalar(mission.id === "deep-space-telescope" ? 0.95 : 0.8);
     craftRoot.add(rocketGroup);
 
+    Models.enableShadows(craftRoot);
     prepare(craftRoot);
     scene.add(craftRoot);
 
-    // Ground
-    if (groundMesh) { scene.remove(groundMesh); disposeTree(groundMesh); groundMesh = null; }
-    if (f.ground) {
-      groundMesh = new T.Mesh(new T.CircleGeometry(14, 48), new T.MeshStandardMaterial({ color: f.ground, roughness: 1 }));
-      groundMesh.rotation.x = -Math.PI / 2;
-      scene.add(groundMesh);
-    }
-
-    // Only reset the camera when switching missions
+    // Only reset the camera and ground when switching missions
     if (currentMissionId !== mission.id) {
+      currentMissionId = mission.id;
+      buildGround(f);
       camera.position.set(...f.cam);
       controls.target.set(...f.target);
       controls.autoRotate = true;
-      currentMissionId = mission.id;
     }
 
     // Collect the groups of the part that was just swapped, for the "pop" animation
@@ -215,7 +281,6 @@
     const k = Math.min((t - popStart) / 550, 1);
     const back = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2); // ease-out-back
     const pulse = 0.5 + 0.5 * Math.sin(t / 220);
-
     popTargets.forEach(({ obj, base }) => obj.scale.setScalar(base * (k < 1 ? Math.max(0.05, back) : 1)));
 
     craftRoot.traverse((o) => {
@@ -226,6 +291,7 @@
       else o.material.emissive.setHex(o.userData.baseEmissive || 0);
     });
 
+    stars.rotation.y += 0.00008;
     controls.update();
     renderer.render(scene, camera);
   }
@@ -239,5 +305,11 @@
     pause: () => (paused = true),
     resume: () => { paused = false; resize(); },
     available: () => typeof THREE !== "undefined" && !!THREE.OrbitControls,
+    /* Testing helper: move the camera (e.g. for close-up screenshots) */
+    debugView(cam, target) {
+      controls.autoRotate = false;
+      camera.position.set(...cam);
+      controls.target.set(...target);
+    },
   };
 })();

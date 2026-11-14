@@ -16,6 +16,7 @@
   let mission, sel, parts, stage, stageT = 0, lastT = 0;
   let keys = {};
   let play = null; // the current mini-game object { update(dt), dispose() }
+  let savedTheme = null;
 
   /* ---------------- DOM overlay ---------------- */
   function buildOverlay() {
@@ -107,10 +108,13 @@
   }
 
   /* ---------------- Three.js helpers ---------------- */
+  let envMap = null;
   function newScene(bg) {
     if (scene) scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
     scene = new T.Scene();
     scene.background = new T.Color(bg);
+    if (!envMap) envMap = Models.makeEnvMap(renderer, "space");
+    scene.environment = envMap; // reflections on metal, foil and mirrors
     if (controls) { controls.dispose(); controls = null; }
     return scene;
   }
@@ -130,6 +134,14 @@
     s.position.set(...sunPos);
     scene.add(s);
   }
+  /* Soil texture repeated across a big ground plane */
+  function tiled(kind, times) {
+    const t = Models.groundTexture(kind).clone();
+    t.needsUpdate = true;
+    t.repeat.set(times, times);
+    return t;
+  }
+
   function flame(radius, length) {
     const m = new T.Mesh(
       new T.ConeGeometry(radius, length, 16, 1, true),
@@ -254,7 +266,7 @@
     earth.position.set(-120, 140, -250);
     scene.add(earth);
 
-    const ground = new T.Mesh(new T.PlaneGeometry(900, 900), new T.MeshStandardMaterial({ color: 0x4a4a4e, roughness: 1 }));
+    const ground = new T.Mesh(new T.PlaneGeometry(900, 900), new T.MeshStandardMaterial({ map: tiled("moon", 45), color: 0x9a9aa0, roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
 
@@ -365,7 +377,7 @@
     scene.fog = new T.Fog(0xd29a6c, 25, 160);
     lights([40, 60, 10], 0.7);
 
-    const ground = new T.Mesh(new T.PlaneGeometry(700, 700), new T.MeshStandardMaterial({ color: 0xb4572c, roughness: 1 }));
+    const ground = new T.Mesh(new T.PlaneGeometry(700, 700), new T.MeshStandardMaterial({ map: tiled("mars", 35), roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
     for (let i = 0; i < 160; i++) {
@@ -603,9 +615,16 @@
     onFinish = done;
     buildOverlay();
 
+    // The finale always uses the dark "space" look (restored when it closes)
+    savedTheme = document.documentElement.dataset.theme;
+    document.documentElement.dataset.theme = "dark";
+
     renderer = new T.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.outputEncoding = T.sRGBEncoding;
+    renderer.toneMapping = T.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    envMap = null;
     $f("fCanvas").appendChild(renderer.domElement);
     camera = new T.PerspectiveCamera(50, 1, 0.1, 1500);
     resize();
@@ -628,9 +647,11 @@
     if (scene) scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
     scene = null;
     play = null;
+    if (envMap) { envMap.dispose(); envMap = null; }
     if (renderer) { renderer.dispose(); renderer = null; }
     if (root) root.remove();
     root = null;
+    if (savedTheme) document.documentElement.dataset.theme = savedTheme;
     if (onFinish) onFinish(reveal);
   }
 
