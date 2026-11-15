@@ -3,6 +3,9 @@
    ---------------------------------------------------------------------
    Screens:  Mission Select → 3D Workshop (the "cube") → Solved!
              → 3D Launch + playable finale → NASA Reveal
+   (The Spacecraft Hangar home page lives in hangar.js. When the player
+    comes here from a diagnostic, "repairCtx" remembers which spacecraft
+    and finding sent them, so the game can show it and send them back.)
    ===================================================================== */
 
 (function () {
@@ -12,8 +15,10 @@
   const has3D = () => window.Viewer3D && Viewer3D.available();
 
   let timerHandle = null;
-  let soundOn = true;
+  let volume = 0.7;   // master volume 0–1 (the slider in the top bar)
+  let muted = false;
   let lastSwappedSlot = null;
+  let repairCtx = null; // set when a Hangar diagnostic sent the player here
 
   /* ---------------- Small helpers ---------------- */
   const fmt = (n, decimals = 0) =>
@@ -35,31 +40,14 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
   };
 
-  /* ---------------- Sound effects (Web Audio, no files needed) ---------------- */
-  let audioCtx = null;
-  function beep(freq, duration = 0.08, type = "sine", delay = 0, volume = 0.08) {
-    if (!soundOn) return;
-    try {
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      const t = audioCtx.currentTime + delay;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(volume, t);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-      osc.connect(gain).connect(audioCtx.destination);
-      osc.start(t);
-      osc.stop(t + duration);
-    } catch (e) {
-      /* audio not available: play silently */
-    }
-  }
+  /* ---------------- Sound effects (js/audio.js synthesises them) ---------------- */
+  const S = (name) => window.Sound && Sound.play(name);
+  const beep = (freq, duration = 0.08, type = "sine", delay = 0, vol = 0.08) => window.Sound && Sound.tone(freq, duration, type, delay, vol);
   const sfx = {
-    click: () => beep(900, 0.05, "square", 0, 0.04),
-    good: () => { beep(660, 0.08); beep(990, 0.1, "sine", 0.08); },
-    bad: () => { beep(220, 0.15, "sawtooth", 0, 0.05); },
-    win: () => [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.18, "triangle", i * 0.12, 0.09)),
+    click: () => S("click"), good: () => S("good"), bad: () => S("bad"), win: () => S("win"), scan: () => S("scanStart"),
+    swap: () => S("swap"), alarm: () => S("alarm"), tick: () => S("scanTick"), safe: () => S("safe"), done: () => S("scanDone"),
+    whoosh: () => S("whoosh"), open: () => S("open"), explode: () => S("explode"), assemble: () => S("assemble"),
+    clank: () => S("clank"), hover: () => S("hover"),
   };
 
   /* ---------------- Toasts ---------------- */
@@ -103,6 +91,15 @@
     $("modal").classList.remove("flex");
   }
 
+  /* Stop everything game-related (used when switching to the Hangar) */
+  function leaveGame() {
+    clearInterval(timerHandle);
+    showHud(false);
+    closeDrawer();
+    hideModal();
+    if (has3D()) Viewer3D.pause();
+  }
+
   /* =====================================================================
      SCREEN 1 — Mission select
      ===================================================================== */
@@ -111,12 +108,16 @@
     showHud(false);
     closeDrawer();
     if (has3D()) Viewer3D.pause();
+    if (window.Inspector) Inspector.pause();
+    repairCtx = null;
+    try { history.replaceState(null, "", "#workshop"); } catch (e) { /* ignore */ }
     const best = E.loadBest();
 
     app.innerHTML = `
+      <button id="menuHangar" class="text-xs text-cyan-300 hover:text-cyan-200 mb-4">← Back to the Spacecraft Hangar</button>
       <section class="text-center max-w-3xl mx-auto mb-8">
         <p class="font-display text-xs tracking-[0.3em] text-cyan-400 mb-3">NASA SPACE APPS CHALLENGE 2026</p>
-        <h1 class="font-display text-3xl sm:text-5xl font-black text-white mb-4">Space Mission Cube</h1>
+        <h1 class="font-display text-3xl sm:text-5xl font-black text-white mb-4">Trade-Off Workshop</h1>
         <p class="text-lg text-slate-300 mb-2">Fix broken spacecraft in 3D, then launch them and fly the mission!</p>
         <p class="text-slate-400">Every spacecraft below has a problem. Swap its parts until every checklist answer is
           <b class="text-emerald-300">YES</b>. Careful: like a Rubik's cube, fixing one thing can break another.</p>
@@ -155,7 +156,7 @@
           ["3. Get all YES", "When every answer is ✓ YES, the mission is ready."],
           ["4. Launch & fly", "Launch it and play the mission with YOUR design."],
         ].map(([t, d]) => `
-          <div class="rounded-xl border border-slate-700/60 bg-space-900/60 p-4">
+          <div class="rounded-xl border border-slate-700/60 bg-space-900/60 p-4" data-reveal>
             <p class="font-display text-cyan-300 text-xs mb-1">${t}</p><p class="text-slate-400">${d}</p>
           </div>`).join("")}
       </section>`;
@@ -166,12 +167,16 @@
         startMission(window.MISSIONS.find((m) => m.id === btn.dataset.mission));
       })
     );
+    $("menuHangar").addEventListener("click", () => { sfx.click(); Hangar.render(); });
   }
 
   /* =====================================================================
      SCREEN 2 — 3D workshop (the cube)
      ===================================================================== */
-  function startMission(mission) {
+  function startMission(mission, ctx) {
+    if (arguments.length > 1) repairCtx = ctx || null;
+    if (window.Inspector) Inspector.pause();
+    try { history.replaceState(null, "", "#" + mission.id); } catch (e) { /* ignore */ }
     E.start(mission);
     lastSwappedSlot = null;
     showHud(true);
@@ -225,6 +230,8 @@
           <a href="tutorial.html" target="_blank" rel="noopener" class="rounded-lg border border-cyan-400/40 text-cyan-200 px-3 py-2 text-sm hover:bg-cyan-400/10">📘 Tutorial</a>
         </div>
       </div>
+
+      ${repairCtx ? repairBannerHtml(m) : ""}
 
       <!-- Goal + progress -->
       <div class="rounded-xl border border-slate-700/60 bg-space-900/80 px-4 py-3 mb-5">
@@ -314,12 +321,14 @@
     $("numbersBox").addEventListener("toggle", (e) => storage.set("smc-numbers", e.target.open ? "open" : "closed"));
     $("resetBtn").addEventListener("click", () => { sfx.click(); startMission(m); });
     $("hintBtn").addEventListener("click", showHint);
+    if ($("repairBack")) $("repairBack").addEventListener("click", () => { sfx.click(); Hangar.returnFromWorkshop(repairCtx.craftId, false); });
 
     // 3D view
     if (has3D()) {
       Viewer3D.mount($("viewer"));
       Viewer3D.show(m, st.sel, lastSwappedSlot);
-      Viewer3D.highlight([]);
+      // Coming from a diagnostic: the related part glows until the first move
+      Viewer3D.highlight(repairCtx && repairCtx.slot && st.moves === 0 ? [repairCtx.slot] : []);
       Viewer3D.onPick((slot) => { sfx.click(); openDrawer(slot); });
       Viewer3D.onHover((slot, e) => {
         const tip = $("viewerTip");
@@ -333,6 +342,26 @@
         tip.classList.remove("hidden");
       });
     }
+  }
+
+  /* "Repair order" banner shown when a Hangar diagnostic sent the player here */
+  function repairBannerHtml(m) {
+    const c = repairCtx;
+    const slot = c.slot && m.slots.find((s) => s.id === c.slot);
+    const sevName = { C: "Critical", H: "High", M: "Medium", L: "Low" }[c.sev];
+    return `
+      <div class="repair-banner rounded-xl border border-rose-400/50 bg-rose-500/10 px-4 py-3 mb-4 flex flex-wrap items-start gap-3">
+        <div class="flex-1 min-w-[240px]">
+          <p class="font-display text-xs tracking-widest text-rose-300 mb-1">🛠 ${c.reading ? "REPAIR ORDER FROM THE" : "SENT HERE FROM THE"} ${esc(c.craftName.toUpperCase())} ${c.reading ? "DIAGNOSTIC" : "INSPECTION"}</p>
+          ${c.reading
+            ? `<p class="text-sm text-white mb-1">${sevName ? `<span class="sev sev-${c.sev}">${sevName}</span> ` : ""}<b>${esc(c.itemName)}:</b> ${esc(c.reading)}</p>`
+            : `<p class="text-sm text-white mb-1">Exploring: <b>${esc(c.itemName || c.craftName)}</b></p>`}
+          <p class="text-xs text-slate-300">Engineers fix problems by redesigning the whole spacecraft, because every part affects the others.
+            ${slot ? `The related part here is the <b class="text-white">${slot.icon} ${slot.label}</b>${E.state.moves === 0 ? " (glowing)" : ""}.` : ""}
+            Turn every checklist answer into <b class="text-emerald-300">✓ YES</b>, then re-run the diagnostic.</p>
+        </div>
+        <button id="repairBack" class="rounded-lg border border-slate-500/60 px-3 py-2 text-xs hover:bg-white/5 shrink-0">🛰 Back to ${esc(c.craftName)}</button>
+      </div>`;
   }
 
   /* One plain-language checklist row */
@@ -478,6 +507,7 @@
     closeDrawer();
     if (!result) return;
     lastSwappedSlot = slotId;
+    sfx.swap();
     updateHud();
     renderDashboard();
 
@@ -534,6 +564,7 @@
     const parMoves = E.par(m);
     const stars = E.stars(st.moves, parMoves);
     const saved = E.saveResult(m.id, st.moves, time);
+    if (repairCtx && window.Hangar) Hangar.repaired.set(repairCtx.craftId, true);
 
     showModal(`
       <p class="font-display text-xs tracking-[0.3em] text-emerald-300 mb-2">ALL CHECKS PASSED</p>
@@ -553,6 +584,7 @@
       ${saved.newBestMoves || saved.newBestTime ? `<p class="text-xs text-emerald-300 mb-1">🏆 New personal best${saved.newBestMoves && saved.newBestTime ? "s" : ""}!</p>` : ""}
       <div class="flex flex-col gap-2 mt-5">
         ${has3D() ? `<button id="launchBtn" class="rounded-lg bg-emerald-400 hover:bg-emerald-300 text-space-950 font-bold px-4 py-3 font-display tracking-wider">🚀 LAUNCH THE MISSION!</button>` : ""}
+        ${repairCtx ? `<button id="rescanBtn" class="rounded-lg bg-rose-500 hover:bg-rose-400 text-white font-semibold px-4 py-2.5 text-sm">🩺 Back to ${esc(repairCtx.craftName)}: re-run the diagnostic</button>` : ""}
         <div class="flex gap-2">
           <button id="revealBtn" class="flex-1 rounded-lg border border-cyan-400/50 text-cyan-200 px-4 py-2.5 hover:bg-cyan-400/10 text-sm">Skip to NASA reveal</button>
           <button id="againBtn" class="flex-1 rounded-lg border border-slate-500/60 px-4 py-2.5 hover:bg-white/5 text-sm">Play again</button>
@@ -561,11 +593,13 @@
     if (has3D()) {
       $("launchBtn").addEventListener("click", () => {
         hideModal();
+        sfx.whoosh();
         Viewer3D.pause();
         Finale3D.start(m, { ...st.sel }, () => renderReveal());
       });
     }
     $("revealBtn").addEventListener("click", () => { hideModal(); renderReveal(); });
+    if ($("rescanBtn")) $("rescanBtn").addEventListener("click", () => { hideModal(); Hangar.returnFromWorkshop(repairCtx.craftId, true); });
     $("againBtn").addEventListener("click", () => { hideModal(); startMission(m); });
   }
 
@@ -620,24 +654,55 @@
 
       <div class="flex flex-wrap gap-3 mt-8">
         <button id="replayBtn" class="rounded-lg bg-cyan-500 hover:bg-cyan-400 text-space-950 font-semibold px-5 py-3">↺ Try to beat par</button>
+        ${repairCtx ? `<button id="revealRescan" class="rounded-lg bg-rose-500 hover:bg-rose-400 text-white font-semibold px-5 py-3">🩺 Back to ${esc(repairCtx.craftName)}: re-run the diagnostic</button>` : ""}
         <button id="menuBtn" class="rounded-lg border border-slate-500/60 px-5 py-3 hover:bg-white/5">Choose another mission</button>
       </div>`;
 
     $("replayBtn").addEventListener("click", () => startMission(m));
     $("menuBtn").addEventListener("click", renderMenu);
+    if ($("revealRescan")) $("revealRescan").addEventListener("click", () => Hangar.returnFromWorkshop(repairCtx.craftId, true));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   /* ---------------- Global wiring ---------------- */
-  $("homeBtn").addEventListener("click", renderMenu);
+  $("homeBtn").addEventListener("click", () => Hangar.render());
+  $("navHangar").addEventListener("click", () => { sfx.click(); Hangar.render(); });
+  $("navWorkshop").addEventListener("click", () => { sfx.click(); renderMenu(); });
   $("drawerClose").addEventListener("click", closeDrawer);
   $("drawerBackdrop").addEventListener("click", closeDrawer);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeDrawer();
   });
+  /* ---------------- Volume slider ---------------- */
+  const volSlider = $("volume");
+  function showVolume() {
+    const pct = muted ? 0 : Math.round(volume * 100);
+    $("soundBtn").textContent = pct === 0 ? "🔇" : pct < 34 ? "🔈" : pct < 67 ? "🔉" : "🔊";
+    $("soundBtn").title = muted ? "Unmute" : "Mute";
+    volSlider.value = pct;
+    volSlider.style.setProperty("--vol", pct + "%");
+    $("volVal").textContent = pct + "%";
+    if (window.Sound) { Sound.setVolume(volume); Sound.setMuted(muted); }
+  }
+  const savedVol = storage.get("smc-volume");
+  if (savedVol != null && !isNaN(+savedVol)) volume = Math.min(1, Math.max(0, +savedVol / 100));
+  muted = storage.get("smc-muted") === "1";
+  showVolume();
+  let lastPreview = 0;
+  volSlider.addEventListener("input", () => {
+    volume = volSlider.value / 100;
+    muted = false;
+    storage.set("smc-volume", volSlider.value);
+    storage.set("smc-muted", "0");
+    showVolume();
+    if (performance.now() - lastPreview > 120) { lastPreview = performance.now(); beep(660, 0.06, "sine", 0, 0.08); }
+  });
   $("soundBtn").addEventListener("click", () => {
-    soundOn = !soundOn;
-    $("soundBtn").textContent = soundOn ? "🔊" : "🔇";
+    muted = !muted;
+    if (!muted && volume === 0) volume = 0.5;
+    storage.set("smc-muted", muted ? "1" : "0");
+    showVolume();
+    if (!muted) sfx.good();
   });
 
   // Easy mode (preview of what each option fixes/breaks) is ON by default
@@ -645,8 +710,21 @@
   $("previewToggle").checked = pref == null ? true : pref === "1";
   $("previewToggle").addEventListener("change", (e) => storage.set("smc-easy", e.target.checked ? "1" : "0"));
 
-  // Let other pages link straight into a mission: index.html#mars-rover
-  const fromHash = window.MISSIONS.find((m) => "#" + m.id === location.hash);
-  if (fromHash) startMission(fromHash);
-  else renderMenu();
+  // Shared with the Spacecraft Hangar (hangar.js)
+  window.UI = { startMission, renderMenu, leaveGame, sfx, toast, esc, storage };
+
+  /* Start-up routing (runs once hangar.js has loaded too):
+       index.html#mars-rover     → straight into a workshop mission
+       index.html#craft-hubble   → inspect a spacecraft
+       index.html#workshop       → the workshop mission list
+       index.html                → the Spacecraft Hangar */
+  window.addEventListener("DOMContentLoaded", () => {
+    const h = location.hash.slice(1);
+    const mission = window.MISSIONS.find((m) => m.id === h);
+    const craft = window.SPACECRAFT && window.SPACECRAFT.find((c) => "craft-" + c.id === h);
+    if (mission) startMission(mission);
+    else if (craft) Hangar.inspect(craft);
+    else if (h === "workshop") renderMenu();
+    else Hangar.render();
+  });
 })();

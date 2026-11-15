@@ -14,12 +14,14 @@
 
   /* Camera framing for each mission */
   const FRAMING = {
-    "mars-rover": { cam: [7, 4.2, 8], target: [-1.4, 1.5, 0], ground: "mars" },
-    "deep-space-telescope": { cam: [9, 5.5, 10], target: [-2, 2.2, 0], ground: null },
-    "lunar-lander": { cam: [7, 4.4, 8.5], target: [-1.4, 1.8, 0], ground: "moon" },
+    "mars-rover": { cam: [7, 4.2, 8], target: [-1.4, 1.5, 0], ground: "mars", env: "mars" },
+    "deep-space-telescope": { cam: [9, 5.5, 10], target: [-2, 2.2, 0], ground: null, env: "l2" },
+    "lunar-lander": { cam: [7, 4.4, 8.5], target: [-1.4, 1.8, 0], ground: "moon", env: "moon" },
   };
 
   let renderer, scene, camera, controls, craftRoot, groundMesh, stars, hemi, sun;
+  let fx = null, sky = null; // cinematic post-processing + Milky Way sky (fx.js)
+  let envObj = null;          // dark themes: the real location (Mars, Moon, deep space)
   let container = null;
   let paused = false;
   let hoverSlot = null;
@@ -77,6 +79,9 @@
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.6;
     controls.addEventListener("start", () => (controls.autoRotate = false));
+    if (window.FX && FX.available()) {
+      try { fx = FX.createComposer(renderer, scene, camera); fx.grade.uniforms.exposure.value = 1.05; } catch (e) { fx = null; }
+    }
 
     const el = renderer.domElement;
     el.style.touchAction = "none";
@@ -131,6 +136,14 @@
         : gradientTexture([[0, "#f7f9fc"], [0.6, "#dde5f0"], [1, "#c5d1e0"]], false);
     }
     scene.background = backgrounds[t];
+    // Dark theme: a real Milky Way sky instead of a flat gradient
+    if (window.FX && !sky) {
+      sky = new T.Mesh(new T.SphereGeometry(450, 64, 32), new T.MeshBasicMaterial({ map: FX.tex(FX.milkyWayCanvas()), side: T.BackSide, depthWrite: false, fog: false }));
+      sky.material.color.setScalar(0.6);
+      scene.add(sky);
+    }
+    if (sky) sky.visible = t === "dark";
+    if (fx) { fx.setLook(t === "light"); fx.setTheme(); }
     const envKind = t === "dark" ? "space" : "studio";
     if (!envMaps[envKind]) envMaps[envKind] = Models.makeEnvMap(renderer, envKind);
     scene.environment = envMaps[envKind];
@@ -184,6 +197,7 @@
     renderer.domElement.style.height = "100%";
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    if (fx) fx.setSize(w, h);
   }
 
   /* Remember each mesh's own glow so highlights can be undone */
@@ -195,7 +209,7 @@
 
   function disposeTree(root) {
     root.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
+      if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
       if (o.material) o.material.dispose();
     });
   }
@@ -203,6 +217,30 @@
   /* Ground: Mars or Moon soil fading into the background; clean-room floor for the telescope in light mode */
   function buildGround(f) {
     if (groundMesh) { scene.remove(groundMesh); disposeTree(groundMesh); groundMesh = null; }
+    if (envObj) { scene.remove(envObj.world, envObj.far); disposeTree(envObj.world); disposeTree(envObj.far); envObj = null; }
+    scene.fog = null;
+    // Dark themes: put the spacecraft on location (terrain kept clear around it and the rocket)
+    if (theme() === "dark" && window.FX) {
+      envObj = FX.buildEnvironment(f.env, { clear: 10 });
+      scene.add(envObj.world, envObj.far);
+      scene.fog = envObj.fog;
+      if (sky) sky.visible = false;
+      stars.visible = false;
+      if (!envMaps[envObj.reflect]) envMaps[envObj.reflect] = Models.makeEnvMap(renderer, envObj.reflect);
+      scene.environment = envMaps[envObj.reflect];
+      hemi.color.set(envObj.hemi.sky);
+      hemi.groundColor.set(envObj.hemi.ground);
+      hemi.intensity = envObj.hemi.intensity;
+      sun.color.set(envObj.sunColor);
+      sun.intensity = envObj.sunIntensity;
+      sun.position.copy(envObj.sunDir).multiplyScalar(16);
+      if (fx) fx.grade.uniforms.exposure.value = envObj.exposure * 1.05;
+      return;
+    }
+    sun.color.set(0xfff4e0);
+    sun.intensity = 2.2;
+    sun.position.set(7, 12, 8);
+    if (fx) fx.grade.uniforms.exposure.value = 1.0;
     // (no texture repeat here: in this Three.js version the fade mask would repeat too)
     let map = null;
     if (f.ground) map = Models.groundTexture(f.ground);
@@ -271,11 +309,27 @@
     resize();
   }
 
+
+  /* Adaptive quality: if frames are slow (e.g. a laptop's built-in graphics),
+     render fewer pixels so animation stays smooth */
+  const perf = { ema: 1 / 60, frames: 0, level: 0 };
+  function adaptQuality(dt) {
+    if (dt <= 0 || dt > 0.25) return;
+    perf.ema = perf.ema * 0.95 + dt * 0.05;
+    if (++perf.frames < 90 || perf.level >= 2 || perf.ema < 1 / 42) return;
+    perf.level++;
+    perf.frames = 0;
+    renderer.setPixelRatio(perf.level === 1 ? 1 : 0.8);
+    resize();
+  }
+  let lastFrame = performance.now();
   /* ---------- Animation loop ---------- */
   function loop() {
     requestAnimationFrame(loop);
     if (paused || !container || !craftRoot) return;
     const t = performance.now();
+    adaptQuality((t - lastFrame) / 1000);
+    lastFrame = t;
 
     // "Pop" animation on the part that was just swapped
     const k = Math.min((t - popStart) / 550, 1);
@@ -293,7 +347,15 @@
 
     stars.rotation.y += 0.00008;
     controls.update();
-    renderer.render(scene, camera);
+    if (sky) sky.position.copy(camera.position);
+    if (envObj) envObj.update(1 / 60, t, camera);
+    if (fx) {
+      // glowing cyan outline around the part under the mouse
+      const hov = [];
+      if (hoverSlot) craftRoot.traverse((o) => { if (o.userData.slot === hoverSlot && slotOf(o.parent) !== hoverSlot) hov.push(o); });
+      fx.setOutlines(hov, []);
+      fx.render(t / 1000);
+    } else renderer.render(scene, camera);
   }
 
   window.Viewer3D = {
@@ -303,7 +365,7 @@
     onPick: (cb) => (pickCb = cb),
     onHover: (cb) => (hoverCb = cb),
     pause: () => (paused = true),
-    resume: () => { paused = false; resize(); },
+    resume: () => { paused = false; perf.frames = 0; lastFrame = performance.now(); resize(); },
     available: () => typeof THREE !== "undefined" && !!THREE.OrbitControls,
     /* Testing helper: move the camera (e.g. for close-up screenshots) */
     debugView(cam, target) {

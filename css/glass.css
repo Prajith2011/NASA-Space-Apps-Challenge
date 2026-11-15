@@ -1,0 +1,202 @@
+/* =====================================================================
+   Space Mission Cube — Liquid Glass design + 12 themes + lively motion
+   (loaded after styles.css, on every page)
+   ===================================================================== */
+
+/* =====================================================================
+   THEMES — js/theme.js sets <html data-skin="…" data-theme="dark|light">
+   Each theme sets its accent colours, page colour, the glass tint, a
+   colour grade for the 3D views, and four glowing "orbs" that drift
+   slowly behind the glass.
+   ===================================================================== */
+html {
+  --a1: #22d3ee; --a2: #67e8f9; --a3: #a5f3fc; --a-rgb: 34 211 238; --a-ink: #0e7490;
+  --bg0: #04060f; --o1: #1d4ed8; --o2: #0891b2; --o3: #6d28d9; --o4: #0ea5e9;
+  --glass-rgb: 14 20 42; --glass-a: 0.42; --edge: 0.14; --rim: 0.22; --hi1: 0.07; --sheen: 0.07; --drop: 0.55;
+  --grade: 1 1 1; --star-o: 1;
+}
+html[data-theme="light"] {
+  --a1: #0891b2; --a2: #0891b2; --a3: #0e7490; --a-ink: #0e7490; --bg0: #eef2f8;
+  --o1: #bae6fd; --o2: #c7d2fe; --o3: #a5f3fc; --o4: #e9d5ff;
+  --glass-rgb: 255 255 255; --glass-a: 0.58; --edge: 0.7; --rim: 0.9; --hi1: 0.5; --sheen: 0.35; --drop: 0.16; --star-o: 0;
+}
+html[data-skin="nebula"]       { --a1: #c084fc; --a2: #d8b4fe; --a3: #f0abfc; --a-rgb: 192 132 252; --bg0: #0b0414; --o1: #7e22ce; --o2: #db2777; --o3: #4338ca; --o4: #a21caf; --glass-rgb: 30 12 48; --grade: 1.03 0.97 1.06; }
+html[data-skin="aurora"]       { --a1: #34d399; --a2: #6ee7b7; --a3: #a7f3d0; --a-rgb: 52 211 153; --bg0: #021412; --o1: #059669; --o2: #0891b2; --o3: #10b981; --o4: #4f46e5; --glass-rgb: 6 30 30; --grade: 0.96 1.04 1.02; }
+html[data-skin="mars-dust"]    { --a1: #fb923c; --a2: #fdba74; --a3: #fed7aa; --a-rgb: 251 146 60; --bg0: #140805; --o1: #c2410c; --o2: #b45309; --o3: #7c2d12; --o4: #dc2626; --glass-rgb: 40 16 8; --grade: 1.06 0.98 0.9; }
+html[data-skin="solar-flare"]  { --a1: #fbbf24; --a2: #fcd34d; --a3: #fde68a; --a-rgb: 251 191 36; --bg0: #120a02; --o1: #d97706; --o2: #dc2626; --o3: #ca8a04; --o4: #ea580c; --glass-rgb: 38 24 6; --grade: 1.07 1.0 0.88; }
+html[data-skin="ocean-world"]  { --a1: #38bdf8; --a2: #7dd3fc; --a3: #bae6fd; --a-rgb: 56 189 248; --bg0: #020b1a; --o1: #1d4ed8; --o2: #0d9488; --o3: #2563eb; --o4: #0891b2; --glass-rgb: 6 22 44; --grade: 0.95 1.01 1.07; }
+html[data-skin="neon-city"]    { --a1: #f472b6; --a2: #f9a8d4; --a3: #67e8f9; --a-rgb: 244 114 182; --bg0: #07020f; --o1: #db2777; --o2: #0891b2; --o3: #7c3aed; --o4: #e11d48; --glass-rgb: 24 8 36; --grade: 1.04 0.95 1.08; }
+html[data-skin="sunset-orbit"] { --a1: #fb7185; --a2: #fda4af; --a3: #fecdd3; --a-rgb: 251 113 133; --bg0: #12060d; --o1: #ea580c; --o2: #db2777; --o3: #6d28d9; --o4: #f59e0b; --glass-rgb: 36 12 26; --grade: 1.06 0.97 0.97; }
+html[data-skin="lunar-silver"] { --a1: #e2e8f0; --a2: #f1f5f9; --a3: #f8fafc; --a-rgb: 226 232 240; --bg0: #08090c; --o1: #475569; --o2: #334155; --o3: #64748b; --o4: #1e293b; --glass-rgb: 20 22 28; --grade: 0.98 0.99 1.02; }
+html[data-skin="arctic"]       { --a1: #0284c7; --a2: #0284c7; --a3: #075985; --a-ink: #075985; --a-rgb: 2 132 199; --bg0: #eef6fb; --o1: #bae6fd; --o2: #99f6e4; --o3: #c7d2fe; --o4: #e0f2fe; --grade: 0.97 1.0 1.05; }
+html[data-skin="retro-nasa"]   { --a1: #dc2626; --a2: #dc2626; --a3: #991b1b; --a-ink: #b91c1c; --a-rgb: 220 38 38; --bg0: #f6efe2; --o1: #fecaca; --o2: #fde68a; --o3: #fed7aa; --o4: #e7e5e4; --grade: 1.04 1.0 0.94; }
+
+/* Accent colour for every Tailwind "cyan" class used in the pages */
+html .text-cyan-200, html .text-cyan-300, html .text-cyan-300\/80, html .text-cyan-400 { color: var(--a2); }
+html .hover\:text-cyan-200:hover { color: var(--a3); }
+html .border-cyan-400, html .border-cyan-400\/30, html .border-cyan-400\/40, html .border-cyan-400\/50,
+html .border-cyan-500\/20, html .border-cyan-500\/30 { border-color: rgb(var(--a-rgb) / 0.45); }
+html .bg-cyan-500 { background-color: var(--a1); }
+html .hover\:bg-cyan-400:hover { background-color: var(--a2); }
+html .bg-cyan-400\/10, html .hover\:bg-cyan-400\/10:hover { background-color: rgb(var(--a-rgb) / 0.12); }
+html[data-theme="light"] .text-cyan-200, html[data-theme="light"] .text-cyan-300, html[data-theme="light"] .text-cyan-300\/80,
+html[data-theme="light"] .text-cyan-400 { color: var(--a-ink); }
+html[data-theme="light"] .bg-cyan-500, html[data-theme="light"] .bg-cyan-500 * { color: #fff; }
+html[data-skin="lunar-silver"] .bg-cyan-500 { color: #0b0d12; }
+html[data-skin="retro-nasa"] .font-display { letter-spacing: 0.04em; }
+
+/* =====================================================================
+   LIQUID GLASS
+   ---------------------------------------------------------------------
+   Inspired by Apple's Liquid Glass: see-through panels that blur and
+   brighten what is behind them, a bright rim of light along the top
+   edge, and a soft sheen that follows the mouse (js/lively.js sets
+   --mx / --my). Colourful orbs drift behind everything so the glass
+   has something to bend.
+   ===================================================================== */
+html body, html .bg-space-950 { background-color: var(--bg0) !important; }
+
+.backdrop { position: fixed; inset: -8vmax; z-index: 0; pointer-events: none; overflow: hidden;
+  transform: translate3d(var(--px, 0px), var(--py, 0px), 0); transition: transform 1.4s cubic-bezier(0.22, 1, 0.36, 1); }
+.orb { position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%; opacity: 0.5; will-change: transform; }
+.orb.o1 { background: radial-gradient(circle, var(--o1), transparent 62%); top: -25vmax; left: -20vmax; animation: drift1 46s ease-in-out infinite alternate; }
+.orb.o2 { background: radial-gradient(circle, var(--o2), transparent 62%); top: 10vmax; right: -30vmax; animation: drift2 54s ease-in-out infinite alternate; }
+.orb.o3 { background: radial-gradient(circle, var(--o3), transparent 62%); bottom: -35vmax; left: 10vmax; animation: drift3 60s ease-in-out infinite alternate; }
+.orb.o4 { background: radial-gradient(circle, var(--o4), transparent 62%); top: 35vmax; left: -25vmax; width: 50vmax; height: 50vmax; opacity: 0.35; animation: drift2 70s ease-in-out infinite alternate-reverse; }
+html[data-theme="light"] .orb { opacity: 0.85; }
+@keyframes drift1 { to { transform: translate(18vmax, 12vmax) scale(1.15); } }
+@keyframes drift2 { to { transform: translate(-16vmax, 14vmax) scale(0.9); } }
+@keyframes drift3 { to { transform: translate(12vmax, -18vmax) scale(1.2); } }
+
+/* stars only (no solid colour), so the orbs show through */
+html .starfield { background-color: transparent !important; opacity: var(--star-o); z-index: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, #fff8, transparent), radial-gradient(1px 1px at 30% 70%, #fff6, transparent),
+    radial-gradient(1.5px 1.5px at 55% 35%, #fff9, transparent), radial-gradient(1px 1px at 75% 80%, #fff5, transparent),
+    radial-gradient(1px 1px at 90% 15%, #fff7, transparent), radial-gradient(1.5px 1.5px at 20% 90%, #fff6, transparent),
+    radial-gradient(1px 1px at 65% 60%, #fff4, transparent) !important;
+  background-size: 400px 400px, 300px 300px, 500px 500px, 350px 350px, 450px 450px, 380px 380px, 420px 420px !important;
+  animation: twinkle 7s ease-in-out infinite alternate; }
+@keyframes twinkle { from { opacity: calc(var(--star-o) * 0.6); } to { opacity: var(--star-o); } }
+
+/* The glass material: every panel, card, bar and pop-up */
+html .bg-space-900, html .bg-space-900\/80, html .bg-space-900\/60, html .bg-space-900\/90,
+html .bg-space-800, html .bg-space-800\/60, html .bg-space-800\/95,
+.hud-box, .viewer-pill, .tut-card, .icon-btn, .chip, .theme-picker, .toast, .vol, .glass {
+  background-color: rgb(var(--glass-rgb) / var(--glass-a)) !important;
+  background-image:
+    radial-gradient(420px circle at var(--mx, 50%) var(--my, 20%), rgb(255 255 255 / var(--sheen)), transparent 50%),
+    linear-gradient(165deg, rgb(255 255 255 / var(--hi1)) 0%, rgb(255 255 255 / 0) 42%) !important;
+  background-attachment: fixed, scroll !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  border-color: rgb(255 255 255 / var(--edge)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / var(--rim)),
+    inset 0 -1px 0 rgb(255 255 255 / 0.05),
+    inset 1px 0 0 rgb(255 255 255 / 0.04),
+    0 18px 48px -22px rgb(0 0 0 / var(--drop)) !important;
+}
+/* toasts keep their status colour as a tint */
+.toast.border-rose-500\/60 { box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--rim)), 0 0 0 1px rgb(244 63 94 / 0.5), 0 18px 40px -18px rgb(244 63 94 / 0.6) !important; }
+.toast.border-emerald-400\/60 { box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--rim)), 0 0 0 1px rgb(52 211 153 / 0.5), 0 18px 40px -18px rgb(52 211 153 / 0.6) !important; }
+.toast.border-amber-400\/60 { box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--rim)), 0 0 0 1px rgb(251 191 36 / 0.5) !important; }
+
+/* rounded, Apple-like shapes */
+html .rounded-xl { border-radius: 20px; }
+html .rounded-2xl { border-radius: 28px; }
+html button.rounded-lg, html a.rounded-lg, html input.rounded-lg { border-radius: 999px; }
+.icon-btn { border-radius: 999px !important; width: 36px; height: 36px; }
+.hud-box { border-radius: 16px; }
+.list-row, .feed-row { border-radius: 14px; }
+.viewer { border-radius: 28px; }
+.chip { border-radius: 999px; }
+
+/* The top bar floats as a glass capsule */
+body > header { position: sticky !important; top: 12px; z-index: 40 !important; width: min(1260px, calc(100% - 20px));
+  margin: 12px auto 0; border-radius: 26px; border: 1px solid; }
+body > header > div { padding-top: 8px; padding-bottom: 8px; }
+
+/* Solid buttons get a glossy "liquid" highlight and a coloured glow */
+html .bg-cyan-500, html .bg-rose-500, html .bg-emerald-400 {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.38), rgb(255 255 255 / 0.04) 52%, rgb(0 0 0 / 0.06)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), inset 0 -2px 6px rgb(0 0 0 / 0.12), 0 10px 26px -10px rgb(var(--a-rgb) / 0.8);
+}
+html .bg-rose-500 { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 10px 26px -10px rgb(244 63 94 / 0.8); }
+html .bg-emerald-400 { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 10px 26px -10px rgb(52 211 153 / 0.8); }
+.diag-btn { border-radius: 999px !important; }
+
+/* Springy press + gentle lift on every button */
+button:not(.craft-card):not(.mission-card), a.rounded-lg {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s, border-color 0.2s, box-shadow 0.25s, color 0.2s;
+}
+button:not(.craft-card):not(.mission-card):not(.list-row):not(.feed-row):not(:disabled):hover, a.rounded-lg:hover { transform: translateY(-1px); }
+button:not(.craft-card):not(.mission-card):not(:disabled):active, a.rounded-lg:active { transform: scale(0.95); transition-duration: 0.08s; }
+
+/* Pop-ups: dim + blur what is behind */
+#modal, #infoModal, #drawerBackdrop { background: rgb(0 0 0 / 0.35) !important; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+html[data-theme="light"] #modal, html[data-theme="light"] #infoModal, html[data-theme="light"] #drawerBackdrop { background: rgb(15 23 42 / 0.18) !important; }
+.modal-card { animation: glass-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes glass-pop { from { opacity: 0; transform: scale(0.88) translateY(14px); } to { opacity: 1; transform: none; } }
+.drawer { border-radius: 28px 0 0 28px; }
+
+/* Theme picker */
+.theme-picker { position: fixed; z-index: 60; width: min(360px, calc(100vw - 16px)); padding: 14px; border-radius: 24px; border: 1px solid;
+  opacity: 0; pointer-events: none; transform: translateY(-8px) scale(0.96); transform-origin: top right;
+  transition: opacity 0.25s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.theme-picker.open { opacity: 1; pointer-events: auto; transform: none; }
+.theme-picker-title { font-family: Orbitron, sans-serif; font-size: 11px; letter-spacing: 0.18em; opacity: 0.7; margin: 2px 4px 10px; }
+.theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.theme-swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px 8px; border-radius: 18px;
+  border: 1px solid transparent; position: relative; }
+.theme-swatch:hover { background: rgb(255 255 255 / 0.08); border-color: rgb(255 255 255 / 0.15); }
+.theme-swatch.active { border-color: var(--a1); background: rgb(var(--a-rgb) / 0.14); }
+.theme-dot { width: 40px; height: 40px; border-radius: 999px; box-shadow: inset 0 2px 4px rgb(255 255 255 / 0.5), inset 0 -3px 6px rgb(0 0 0 / 0.35), 0 4px 12px rgb(0 0 0 / 0.35);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.theme-swatch:hover .theme-dot { transform: scale(1.12) rotate(-8deg); }
+.theme-name { font-size: 11px; font-weight: 600; line-height: 1.1; text-align: center; }
+.theme-mode { position: absolute; top: 4px; right: 6px; font-size: 10px; }
+
+/* Volume control */
+.vol { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 3px; border-radius: 999px; border: 1px solid; }
+.vol .icon-btn { width: 30px; height: 30px; border: 0; box-shadow: none !important; background: transparent !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.vol input[type="range"] { -webkit-appearance: none; appearance: none; width: 84px; height: 6px; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(90deg, var(--a1) var(--vol, 70%), rgb(148 163 184 / 0.35) var(--vol, 70%)); }
+.vol input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 999px; background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.4), inset 0 -1px 2px rgb(0 0 0 / 0.15); transition: transform 0.2s; }
+.vol input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.vol input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 0.4); }
+.vol-val { font-size: 10px; font-variant-numeric: tabular-nums; min-width: 28px; opacity: 0.8; }
+@media (max-width: 640px) { .vol input[type="range"] { width: 56px; } .vol-val { display: none; } }
+
+/* =====================================================================
+   LIVELY MOTION (with js/lively.js)
+   ===================================================================== */
+.ripple { position: fixed; z-index: 70; pointer-events: none; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 999px;
+  border: 2px solid rgb(var(--a-rgb) / 0.8); animation: ripple 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+@keyframes ripple { to { transform: scale(7); opacity: 0; } }
+[data-reveal] { opacity: 0; transform: translateY(26px) scale(0.98); transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+[data-reveal].revealed { opacity: 1; transform: none; }
+.cube-logo { animation: logo-spin 9s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+@keyframes logo-spin { 0%, 80% { transform: rotate(0); } 90% { transform: rotate(90deg) scale(1.15); } 100% { transform: rotate(90deg); } }
+.gauge-fill.progress { background-image: linear-gradient(90deg, var(--a1), var(--a3), var(--a1)); background-size: 200% 100%; animation: shimmer 2.6s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.sev-C { animation: crit-pulse 1.6s ease-in-out infinite; }
+@keyframes crit-pulse { 50% { box-shadow: 0 0 12px rgb(225 29 72 / 0.8); } }
+.feed-row.danger { animation: feed-in 0.25s ease-out, danger-flash 0.9s ease-out; }
+@keyframes danger-flash { 0% { box-shadow: 0 0 0 0 rgb(244 63 94 / 0.9); } 100% { box-shadow: 0 0 0 14px rgb(244 63 94 / 0); } }
+.check-item { transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s, background 0.2s; }
+.check-item:hover { transform: translateX(3px); }
+.tilt { transform-style: preserve-3d; transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .orb, .starfield, .cube-logo, .gauge-fill, .sev-C, .feed-row.danger { animation: none !important; }
+  [data-reveal] { opacity: 1; transform: none; }
+  .backdrop { transition: none; }
+}
+
+/* Cinematic letterbox bars during the launch */
+.cine-bars span { position: absolute; left: 0; right: 0; height: 9vh; background: #000; pointer-events: none;
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
+.cine-bars span:first-child { top: 0; transform: translateY(-100%); }
+.cine-bars span:last-child { bottom: 0; transform: translateY(100%); }
+.cine-bars.on span { transform: none; }

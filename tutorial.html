@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>How to Play · Space Mission Cube</title>
-  <meta name="description" content="Step-by-step tutorial for Space Mission Cube: the goal, the screen, the space science and a full walkthrough." />
+  <meta name="description" content="Step-by-step tutorial for Space Mission Cube: the Spacecraft Hangar, diagnostics, the Trade-Off Workshop, the space science, themes and a full walkthrough." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -21,18 +21,26 @@
     };
   </script>
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/glass.css" />
   <script src="js/theme.js"></script>
+  <script src="js/lively.js"></script>
+  <script src="js/audio.js"></script>
   <style>
-    .tut-card { border: 1px solid rgb(100 116 139 / 0.35); background: rgb(8 12 28 / 0.8); border-radius: 16px; padding: 20px; }
+    .tut-card { border: 1px solid rgb(100 116 139 / 0.35); border-radius: 24px; padding: 20px; }
     .step-num { width: 30px; height: 30px; flex: none; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
-      font-family: Orbitron, sans-serif; font-weight: 700; font-size: 13px; background: #22d3ee; color: #04060f; }
+      font-family: Orbitron, sans-serif; font-weight: 700; font-size: 13px; background: var(--a1); color: #04060f;
+      box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 6px 16px -6px rgb(var(--a-rgb) / 0.9); }
+    .part-label { font-family: Orbitron, sans-serif; font-size: 11px; letter-spacing: 0.3em; color: var(--a2); }
+    html[data-theme="light"] .part-label { color: var(--a-ink); }
+    .demo-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 14px; border: 1px solid rgb(148 163 184 / 0.25); }
+    .demo-row.safe { border-left: 3px solid #34d399; } .demo-row.danger { border-left: 3px solid #f43f5e; background: rgb(244 63 94 / 0.08); }
     .callout { position: absolute; width: 26px; height: 26px; border-radius: 999px; background: #fbbf24; color: #04060f;
       font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 4px rgb(251 191 36 / 0.25); }
     .kbd { display: inline-block; padding: 1px 7px; border-radius: 6px; border: 1px solid rgb(148 163 184 / 0.5); background: rgb(22 32 74 / 0.9);
       font-size: 12px; font-family: ui-monospace, monospace; }
     .move-row { border-left: 3px solid; padding-left: 14px; }
-    nav a.active { color: #67e8f9; }
-    input[type=range] { accent-color: #22d3ee; width: 100%; }
+    nav a.active { color: var(--a2); }
+    main input[type=range] { accent-color: var(--a1); width: 100%; }
   </style>
 </head>
 
@@ -46,7 +54,7 @@
         <span class="font-display font-bold tracking-wider text-sm sm:text-base text-cyan-300">SPACE MISSION CUBE</span>
       </a>
       <span class="text-slate-500 text-sm">/ Tutorial</span>
-      <button data-theme-toggle class="icon-btn ml-auto" type="button" aria-label="Switch theme">☀️</button>
+      <button data-theme-toggle class="icon-btn ml-auto" type="button" aria-label="Choose a theme">🎨</button>
       <a href="index.html" class="rounded-lg bg-cyan-500 hover:bg-cyan-400 text-space-950 font-semibold px-4 py-2 text-sm">▶ Play now</a>
     </div>
   </header>
@@ -56,30 +64,105 @@
     <section class="text-center mb-10">
       <p class="font-display text-xs tracking-[0.3em] text-cyan-400 mb-3">TUTORIAL</p>
       <h1 class="font-display text-3xl sm:text-5xl font-black text-white mb-4">How to Play</h1>
-      <p class="text-lg text-slate-300 max-w-2xl mx-auto">You are a NASA mission engineer. A spacecraft design is broken. Fix it by swapping parts,
-        then launch it and fly the mission yourself. No space knowledge needed: this page explains everything.</p>
+      <p class="text-lg text-slate-300 max-w-2xl mx-auto">You are a NASA mission engineer. First, inspect real spacecraft in 3D and run a
+        diagnostic to find what is dangerous. Then fix the design in the Trade-Off Workshop, launch it and fly the mission yourself.
+        No space knowledge needed: this page explains everything.</p>
     </section>
 
     <!-- Table of contents -->
     <nav class="tut-card mb-10">
       <p class="font-display text-xs tracking-widest text-slate-400 mb-3">ON THIS PAGE</p>
       <ol class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm list-decimal list-inside text-slate-300">
-        <li><a class="hover:text-cyan-300" href="#goal">The goal in 30 seconds</a></li>
-        <li><a class="hover:text-cyan-300" href="#screen">The screen, explained</a></li>
+        <li><a class="hover:text-cyan-300" href="#hangar">The Spacecraft Hangar</a></li>
+        <li><a class="hover:text-cyan-300" href="#inspect">Inspecting parts & their risks</a></li>
+        <li><a class="hover:text-cyan-300" href="#diagnose">Diagnose: finding the dangers</a></li>
+        <li><a class="hover:text-cyan-300" href="#repair">From danger to repair</a></li>
+        <li><a class="hover:text-cyan-300" href="#goal">The workshop goal in 30 seconds</a></li>
+        <li><a class="hover:text-cyan-300" href="#screen">The workshop screen, explained</a></li>
         <li><a class="hover:text-cyan-300" href="#cube">Why it's like a Rubik's cube</a></li>
         <li><a class="hover:text-cyan-300" href="#science">The space ideas, in plain English</a></li>
         <li><a class="hover:text-cyan-300" href="#walkthrough">Walkthrough: fixing the Mars rover</a></li>
         <li><a class="hover:text-cyan-300" href="#finale">Launch & the 3D finale</a></li>
         <li><a class="hover:text-cyan-300" href="#scoring">Scoring: moves, time, par & stars</a></li>
+        <li><a class="hover:text-cyan-300" href="#settings">Themes, volume & settings</a></li>
         <li><a class="hover:text-cyan-300" href="#tips">Tips & questions</a></li>
       </ol>
     </nav>
 
+    <!-- ================= PART 1: THE SPACECRAFT HANGAR ================= -->
+    <p class="part-label mb-4">PART 1 · THE SPACECRAFT HANGAR</p>
+
+    <section id="hangar" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-2">1 · The Spacecraft Hangar</h2>
+      <p class="text-slate-400 mb-5">The home page. Five <b class="text-white">real NASA spacecraft</b>, each shown "on location" in 3D:</p>
+      <div class="grid sm:grid-cols-5 gap-3 text-sm">
+        <div class="tut-card"><p class="text-2xl mb-1">🔴</p><p class="font-semibold text-white">Curiosity</p><p class="text-slate-400 text-xs mt-1">On Mars, with drifting dust and a dust devil.</p></div>
+        <div class="tut-card"><p class="text-2xl mb-1">🟠</p><p class="font-semibold text-white">Perseverance</p><p class="text-slate-400 text-xs mt-1">On Mars, with the Ingenuity helicopter.</p></div>
+        <div class="tut-card"><p class="text-2xl mb-1">🔭</p><p class="font-semibold text-white">James Webb</p><p class="text-slate-400 text-xs mt-1">Deep space, the Sun blazing behind its sunshield.</p></div>
+        <div class="tut-card"><p class="text-2xl mb-1">🌌</p><p class="font-semibold text-white">Hubble</p><p class="text-slate-400 text-xs mt-1">In orbit above a turning Earth.</p></div>
+        <div class="tut-card"><p class="text-2xl mb-1">🌕</p><p class="font-semibold text-white">Apollo Lunar Module</p><p class="text-slate-400 text-xs mt-1">On the Moon, Earth hanging in the sky.</p></div>
+      </div>
+      <p class="text-sm text-slate-400 mt-4">Click a card. The spacecraft <b class="text-white">builds itself part by part</b> as the camera flies in.</p>
+    </section>
+
+    <section id="inspect" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-2">2 · Inspecting parts & their risks</h2>
+      <div class="grid sm:grid-cols-2 gap-3 text-sm">
+        <div class="tut-card"><p class="font-semibold text-white mb-1">🖱️ Look around</p><p class="text-slate-400"><b>Drag</b> to rotate, <b>scroll / pinch</b> to zoom. <b>Hover</b> any part: it lights up with a glowing outline and shows its name. <b>⟲ Reset view</b> brings the camera back.</p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">🧩 Parts & links list</p><p class="text-slate-400">The side panel lists every part (15–20 per spacecraft) and every <b>connection</b>: the cables, joints, hinges and pipes that join two parts. Use the search box, and hover a row to light it up in 3D.</p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">📋 Click for details</p><p class="text-slate-400">Clicking a part or connection (in 3D or in the list) opens a card with an <b>overview</b>, its <b>known vulnerabilities</b>, and the connections it has. Many vulnerabilities really happened, marked <i>(real)</i>.</p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">💥 Exploded view</p><p class="text-slate-400">Every part slides outward so you can see what is inside. Press <b>🧲 Put it back together</b> to reassemble it.</p></div>
+      </div>
+      <div class="tut-card mt-4">
+        <p class="font-semibold text-white mb-3">Severity levels</p>
+        <div class="grid sm:grid-cols-4 gap-3 text-sm">
+          <div><span class="sev sev-C">Critical</span><p class="text-slate-400 mt-1">Could end the mission or endanger a crew.</p></div>
+          <div><span class="sev sev-H">High</span><p class="text-slate-400 mt-1">Badly limits what the spacecraft can do.</p></div>
+          <div><span class="sev sev-M">Medium</span><p class="text-slate-400 mt-1">A real problem that engineers can work around.</p></div>
+          <div><span class="sev sev-L">Low</span><p class="text-slate-400 mt-1">Minor: worth watching.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="diagnose" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-2">3 · Diagnose: finding the dangers</h2>
+      <div class="grid sm:grid-cols-2 gap-5 items-start">
+        <div class="text-slate-400 space-y-3">
+          <p>Press <b class="text-rose-300">🩺 DIAGNOSE</b>. A holographic scan sweeps over the spacecraft and checks <b class="text-white">every part and every connection</b>, one by one, in a live feed:</p>
+          <ul class="space-y-1 text-sm">
+            <li><b class="text-emerald-300">✓ SAFE</b> lines turn green in the feed. Safe parts are left alone in 3D.</li>
+            <li><b class="text-rose-300">✗ DANGER</b> lines turn red. The part glows red with a pulsing outline, a shock-wave ring pops out of it, and dangerous connections appear as glowing red links between the two parts.</li>
+          </ul>
+          <p class="text-sm">🎲 Every spacecraft always hides <b class="text-white">at least 5 dangers</b>, and they are <b class="text-white">different every time you open it</b>. Running the scan again simulates another year in space with new problems.</p>
+        </div>
+        <div class="tut-card space-y-2 text-sm" aria-label="Example diagnostic feed">
+          <p class="font-display text-xs tracking-widest text-slate-400 mb-1">EXAMPLE FEED</p>
+          <div class="demo-row safe"><b class="text-emerald-300">✓</b><span><span class="text-white">Body (Warm Electronics Box)</span><br><span class="text-xs text-emerald-300">SAFE · Telemetry nominal</span></span></div>
+          <div class="demo-row danger"><b class="text-rose-300">✗</b><span class="flex-1"><span class="text-white">Aluminium wheels (×6)</span><br><span class="text-xs text-rose-300">DANGER · 3 skin punctures detected</span></span><span class="sev sev-H">High</span></div>
+          <div class="demo-row safe"><b class="text-emerald-300">✓</b><span><span class="text-white">Wheel drive & steering motors</span><br><span class="text-xs text-emerald-300">SAFE · Current normal</span></span></div>
+          <div class="demo-row danger"><b class="text-rose-300">✗</b><span class="flex-1"><span class="text-white">Power cable: MMRTG → power bus</span><br><span class="text-xs text-rose-300">DANGER · temperature 14 °C above the limit</span></span><span class="sev sev-H">High</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="repair" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-2">4 · From danger to repair</h2>
+      <div class="grid sm:grid-cols-4 gap-3 text-sm">
+        <div class="tut-card"><span class="step-num">1</span><p class="font-semibold text-white mt-3">Click a red finding</p><p class="text-slate-400 mt-1">On the 3D model or in the feed. The card shows the diagnostic finding at the top.</p></div>
+        <div class="tut-card"><span class="step-num">2</span><p class="font-semibold text-white mt-3">🔧 Fix it in the workshop</p><p class="text-slate-400 mt-1">The Trade-Off Workshop opens with a red <b>repair order</b>, and the related part glows.</p></div>
+        <div class="tut-card"><span class="step-num">3</span><p class="font-semibold text-white mt-3">Redesign</p><p class="text-slate-400 mt-1">Turn every checklist answer into ✓ YES (Part 2 explains how).</p></div>
+        <div class="tut-card"><span class="step-num">4</span><p class="font-semibold text-white mt-3">Re-run the diagnostic</p><p class="text-slate-400 mt-1">Go back: every check passes and the spacecraft is marked <b class="text-emerald-300">✓ Repaired</b>.</p></div>
+      </div>
+    </section>
+
+    <!-- ================= PART 2: THE TRADE-OFF WORKSHOP ================= -->
+    <p class="part-label mb-4 mt-4">PART 2 · THE TRADE-OFF WORKSHOP</p>
+
     <!-- 1. Goal -->
-    <section id="goal" class="mb-14 scroll-mt-20">
-      <h2 class="font-display text-2xl text-white mb-4">1 · The goal in 30 seconds</h2>
+    <section id="goal" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-4">5 · The workshop goal in 30 seconds</h2>
       <div class="grid sm:grid-cols-4 gap-3">
-        <div class="tut-card"><span class="step-num">1</span><p class="font-semibold text-white mt-3">Pick a mission</p><p class="text-sm text-slate-400 mt-1">A Mars rover, a space telescope or a Moon lander. Each one starts broken.</p></div>
+        <div class="tut-card"><span class="step-num">1</span><p class="font-semibold text-white mt-3">Open a mission</p><p class="text-sm text-slate-400 mt-1">Straight from a diagnostic finding, or from the 🧩 Workshop button. A Mars rover, a space telescope or a Moon lander, each starting broken.</p></div>
         <div class="tut-card"><span class="step-num">2</span><p class="font-semibold text-white mt-3">Read the checklist</p><p class="text-sm text-slate-400 mt-1">Questions like "Is it light enough for the rocket?" A red <b class="text-rose-300">✗ NO</b> means a problem.</p></div>
         <div class="tut-card"><span class="step-num">3</span><p class="font-semibold text-white mt-3">Swap parts</p><p class="text-sm text-slate-400 mt-1">Click a part on the 3D spacecraft and choose a different one. Each swap = 1 move.</p></div>
         <div class="tut-card"><span class="step-num">4</span><p class="font-semibold text-white mt-3">All YES → launch!</p><p class="text-sm text-slate-400 mt-1">When every answer is <b class="text-emerald-300">✓ YES</b>, launch it and play the mission in 3D.</p></div>
@@ -87,8 +170,8 @@
     </section>
 
     <!-- 2. Screen -->
-    <section id="screen" class="mb-14 scroll-mt-20">
-      <h2 class="font-display text-2xl text-white mb-2">2 · The screen, explained</h2>
+    <section id="screen" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-2">6 · The workshop screen, explained</h2>
       <p class="text-slate-400 mb-5">This is a simplified picture of the game screen. The yellow numbers match the list below it.</p>
 
       <div class="tut-card relative">
@@ -136,8 +219,8 @@
     </section>
 
     <!-- 3. Rubik's cube -->
-    <section id="cube" class="mb-14 scroll-mt-20">
-      <h2 class="font-display text-2xl text-white mb-4">3 · Why it's like a Rubik's cube</h2>
+    <section id="cube" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-4">7 · Why it's like a Rubik's cube</h2>
       <div class="tut-card grid sm:grid-cols-2 gap-6 items-center">
         <div>
           <p class="text-slate-300 mb-3">On a Rubik's cube, twisting one face to fix it scrambles the faces next to it. Spacecraft are the same, because every part affects several things at once:</p>
@@ -166,8 +249,8 @@
     </section>
 
     <!-- 4. Science -->
-    <section id="science" class="mb-14 scroll-mt-20">
-      <h2 class="font-display text-2xl text-white mb-2">4 · The space ideas, in plain English</h2>
+    <section id="science" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-2">8 · The space ideas, in plain English</h2>
       <p class="text-slate-400 mb-5">These are the things the checklist asks about. You don't need to memorise them: the game explains each one when it matters.</p>
       <div class="grid sm:grid-cols-2 gap-3">
         <div class="tut-card"><p class="font-semibold text-white mb-1">🏋️ Mass & the launch rocket</p><p class="text-sm text-slate-400">Every rocket can only lift a certain mass. If the spacecraft is too heavy, you must make it lighter or buy a bigger (more expensive) rocket. <i>Like a lift with a weight limit.</i></p></div>
@@ -201,8 +284,8 @@
     </section>
 
     <!-- 5. Walkthrough -->
-    <section id="walkthrough" class="mb-14 scroll-mt-20">
-      <h2 class="font-display text-2xl text-white mb-2">5 · Walkthrough: fixing the Mars rover</h2>
+    <section id="walkthrough" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-2">9 · Walkthrough: fixing the Mars rover</h2>
       <p class="text-slate-400 mb-5">Here is a complete solve of the first mission, with the game's real numbers. Try it yourself first if you'd like a spoiler-free game!</p>
 
       <div class="tut-card space-y-6">
@@ -253,9 +336,9 @@
     </section>
 
     <!-- 6. Finale -->
-    <section id="finale" class="mb-14 scroll-mt-20">
-      <h2 class="font-display text-2xl text-white mb-2">6 · Launch & the 3D finale</h2>
-      <p class="text-slate-400 mb-5">When the checklist is all YES, press <b class="text-emerald-300">🚀 LAUNCH THE MISSION!</b> You watch your rocket lift off, then you <b>play the mission with the spacecraft you designed</b>. Your design choices really matter here.</p>
+    <section id="finale" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-2">10 · Launch & the 3D finale</h2>
+      <p class="text-slate-400 mb-5">When the checklist is all YES, press <b class="text-emerald-300">🚀 LAUNCH THE MISSION!</b> You watch your rocket lift off in a short movie (countdown, ignition, liftoff, climbing through the clouds, stage separation in space and the push to orbit, with live altitude and speed; press "Skip launch" to jump ahead), then you <b>play the mission with the spacecraft you designed</b>. Your design choices really matter here.</p>
       <div class="grid sm:grid-cols-3 gap-3 text-sm">
         <div class="tut-card">
           <p class="text-3xl mb-2">🌕</p>
@@ -280,8 +363,8 @@
     </section>
 
     <!-- 7. Scoring -->
-    <section id="scoring" class="mb-14 scroll-mt-20">
-      <h2 class="font-display text-2xl text-white mb-4">7 · Scoring: moves, time, par & stars</h2>
+    <section id="scoring" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-4">11 · Scoring: moves, time, par & stars</h2>
       <div class="tut-card">
         <table class="w-full text-sm">
           <tbody class="divide-y divide-slate-800">
@@ -298,21 +381,39 @@
       </div>
     </section>
 
+    <!-- Settings -->
+    <section id="settings" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-2">12 · Themes, volume & settings</h2>
+      <p class="text-slate-400 mb-4">Everything in the top bar. The whole site uses a "Liquid Glass" look: see-through panels that blur and glow over the colours behind them.</p>
+      <div class="grid sm:grid-cols-3 gap-3 text-sm mb-4">
+        <div class="tut-card"><p class="font-semibold text-white mb-1">🎨 12 themes</p><p class="text-slate-400">Click 🎨 to pick one. Dark themes show each spacecraft on location in space; light themes (☀️) show a bright clean-room assembly hall. The 3D outlines and colours change with the theme too.</p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">🔊 Volume</p><p class="text-slate-400">Drag the slider to set the sound level. Click the speaker to mute or unmute. Your choice is remembered. Listen for the rocket's roar at launch, the rover's motors and the Mars wind howling in the dust storm!</p></div>
+        <div class="tut-card"><p class="font-semibold text-white mb-1">🟢 Easy mode</p><p class="text-slate-400">In the workshop, shows what each part choice would fix or break before you pick it.</p></div>
+      </div>
+      <div class="tut-card">
+        <p class="font-semibold text-white mb-3">Try a theme right now:</p>
+        <div id="themeTry" class="flex flex-wrap gap-2"></div>
+      </div>
+    </section>
+
     <!-- 8. Tips -->
-    <section id="tips" class="mb-14 scroll-mt-20">
-      <h2 class="font-display text-2xl text-white mb-4">8 · Tips & questions</h2>
+    <section id="tips" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-4">13 · Tips & questions</h2>
       <div class="space-y-3">
         <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">Where do I start?</summary><p class="text-sm text-slate-400 mt-2">Read the first ✗ NO in the checklist and click one of its "Parts to try" buttons. Keep Easy mode on, and each option will tell you what it fixes or breaks.</p></details>
         <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">My move broke something. Did I mess up?</summary><p class="text-sm text-slate-400 mt-2">No, that's the puzzle! Read the red message: it says exactly which number went wrong. Often one more swap fixes everything (see the walkthrough above).</p></details>
         <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">Look for the "culprit" part</summary><p class="text-sm text-slate-400 mt-2">If one part appears in several ✗ answers (for example, a heavy, power-hungry instrument), swapping just that part can fix many problems at once.</p></details>
         <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">Is there only one right answer?</summary><p class="text-sm text-slate-400 mt-2">No. Every mission has several valid designs. The reveal screen tells you how many and compares yours with NASA's real choice.</p></details>
         <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">Are the numbers real?</summary><p class="text-sm text-slate-400 mt-2">The part numbers are simplified so the puzzle works. The facts on the "What NASA Built" screen are real and link to NASA sources.</p></details>
+        <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">Why are the dangers different every time?</summary><p class="text-sm text-slate-400 mt-2">Real spacecraft never fail the same way twice. Each time you open a spacecraft, the game picks at least 5 problems at random: some based on real events, others from that part's known weak points, with fresh sensor readings.</p></details>
+        <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">Are the diagnostic readings real?</summary><p class="text-sm text-slate-400 mt-2">The readings are simulated for the game. The parts, what they do, and the vulnerabilities marked "real" come from the actual missions (each spacecraft links to its NASA page).</p></details>
+        <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">The 3D looks slow on my computer</summary><p class="text-sm text-slate-400 mt-2">The 3D views automatically lower their resolution if the frame rate drops. Closing other tabs helps too.</p></details>
         <details class="tut-card"><summary class="cursor-pointer font-semibold text-white">The 3D view is blank</summary><p class="text-sm text-slate-400 mt-2">The 3D engine loads from the internet, so check your connection and refresh. You can still play with the parts list.</p></details>
       </div>
     </section>
 
     <section class="text-center mb-6">
-      <a href="index.html" class="inline-block rounded-xl bg-emerald-400 hover:bg-emerald-300 text-space-950 font-display font-bold tracking-wider px-8 py-4">🚀 START PLAYING</a>
+      <a href="index.html" class="inline-block rounded-lg bg-emerald-400 hover:bg-emerald-300 text-space-950 font-display font-bold tracking-wider px-8 py-4">🛰 OPEN THE HANGAR</a>
     </section>
   </main>
 
@@ -321,6 +422,22 @@
   </footer>
 
   <script>
+    // Theme buttons in the "Themes" section
+    (function () {
+      const box = document.getElementById("themeTry");
+      if (!box || !window.SMCTheme) return;
+      const draw = () => {
+        box.innerHTML = SMCTheme.skins.map((s) => `<button type="button" class="rounded-lg border px-3 py-1.5 text-xs ${SMCTheme.skin() === s.id ? "border-cyan-400 text-cyan-200" : "border-slate-500/50"}" data-skin-try="${s.id}">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:99px;background:${s.sw[0]};margin-right:6px"></span>${s.name}</button>`).join("");
+        box.querySelectorAll("[data-skin-try]").forEach((b) => b.addEventListener("click", () => SMCTheme.set(b.dataset.skinTry)));
+      };
+      draw();
+      window.addEventListener("themechange", draw);
+    })();
+    // Sections float in as you scroll
+    document.querySelectorAll("main > section, main .tut-card").forEach((el) => el.setAttribute("data-reveal", ""));
+    if (window.Lively) Lively.scan();
+
     // Interactive rocket-equation demo (same formula and numbers as the lunar lander mission)
     (function () {
       const dry = document.getElementById("dry"), fuel = document.getElementById("fuel");

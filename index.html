@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Space Mission Cube: Engineering Trade-Offs</title>
-  <meta name="description" content="A NASA Space Apps Challenge game: fix broken spacecraft designs where solving one problem creates another." />
+  <meta name="description" content="A NASA Space Apps Challenge game: inspect real spacecraft in 3D, diagnose their weak points, and fix broken designs where solving one problem creates another." />
 
   <!-- Fonts: Orbitron for headings, Inter for body text -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -30,8 +30,10 @@
     };
   </script>
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/glass.css" />
   <!-- Sets dark/light mode before the page draws (no flash) -->
   <script src="js/theme.js"></script>
+  <script src="js/lively.js"></script>
 </head>
 
 <body class="bg-space-950 text-slate-200 font-sans min-h-screen">
@@ -40,7 +42,7 @@
   <!-- ============ Top bar ============ -->
   <header class="relative z-10 border-b border-cyan-500/20 bg-space-900/80 backdrop-blur">
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
-      <button id="homeBtn" class="flex items-center gap-2 group" title="Back to mission select">
+      <button id="homeBtn" class="flex items-center gap-2 group" title="Back to the Spacecraft Hangar">
         <span class="cube-logo" aria-hidden="true"></span>
         <span class="font-display font-bold tracking-wider text-sm sm:text-base text-cyan-300 group-hover:text-cyan-200">
           SPACE MISSION CUBE
@@ -54,12 +56,21 @@
         <div class="hud-box hidden sm:flex"><span class="hud-label">PAR</span><span id="par" class="hud-value">–</span></div>
       </div>
 
+      <nav class="flex items-center gap-1 text-xs">
+        <button id="navHangar" class="nav-btn">🛰 Hangar</button>
+        <button id="navWorkshop" class="nav-btn">🧩 Workshop</button>
+      </nav>
+
       <div id="toggles" class="flex items-center gap-2 ml-auto" >
         <a href="tutorial.html" class="hidden sm:inline-flex text-xs text-cyan-200 border border-cyan-400/40 rounded-lg px-2.5 py-1.5 hover:bg-cyan-400/10">📘 Tutorial</a>
         <label class="toggle" title="When choosing a part, show which checklist answers it would fix or break">
           <input type="checkbox" id="previewToggle" /> <span>Easy mode</span>
         </label>
-        <button id="soundBtn" class="icon-btn" title="Sound on/off" aria-label="Toggle sound">🔊</button>
+        <div class="vol" title="Volume">
+          <button id="soundBtn" class="icon-btn" type="button" aria-label="Mute or unmute">🔊</button>
+          <input id="volume" type="range" min="0" max="100" value="70" aria-label="Volume" />
+          <span id="volVal" class="vol-val">70%</span>
+        </div>
         <button data-theme-toggle class="icon-btn" type="button" aria-label="Switch theme">☀️</button>
       </div>
     </div>
@@ -85,24 +96,47 @@
     <div id="modalCard" class="modal-card w-full max-w-md rounded-2xl border border-emerald-400/40 bg-space-900 p-6 text-center"></div>
   </div>
 
+  <!-- ============ Part / connection details (Hangar) ============ -->
+  <div id="infoModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
+    <div id="infoCard" class="modal-card"></div>
+  </div>
+
   <!-- ============ Toast messages ============ -->
   <div id="toasts" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[92%] max-w-lg"></div>
 
   <footer class="relative z-10 text-center text-xs text-slate-500 py-6 px-4">
     Made for the 2026 NASA Space Apps Challenge, "Space Mission Design Game".
-    Component numbers are simplified for gameplay. "What NASA Built" facts link to NASA sources.
+    Component numbers and diagnostic readings are simplified for gameplay. Spacecraft facts link to NASA sources.
   </footer>
 
   <!-- 3D engine: Three.js r128 + orbit camera controls (pinned versions) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Cinematic post-processing (bloom, outlines) + rounded-edge boxes, same pinned version -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/OutlinePass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
 
   <!-- Scripts: data → engine → 3D → interface -->
+  <script src="js/audio.js"></script>
   <script src="js/missions.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/models.js"></script>
+  <script src="js/fx.js"></script>
   <script src="js/viewer3d.js"></script>
   <script src="js/finale3d.js"></script>
   <script src="js/ui.js"></script>
+  <!-- Spacecraft Hangar: real spacecraft data → detailed models → 3D inspector → screens -->
+  <script src="js/craftdata.js"></script>
+  <script src="js/craftmodels.js"></script>
+  <script src="js/inspector.js"></script>
+  <script src="js/hangar.js"></script>
 </body>
 </html>

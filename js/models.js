@@ -127,6 +127,38 @@
     });
   }
 
+  /* Panel seams and rivets, used as a bump map so flat surfaces look machined */
+  const panelTex = () => canvasTexture("panel", 512, (g, n) => {
+    g.fillStyle = "#808080";
+    g.fillRect(0, 0, n, n);
+    const r = rng(23);
+    g.strokeStyle = "#3a3a3a";
+    g.lineWidth = 3;
+    g.strokeRect(1.5, 1.5, n - 3, n - 3);                // outer seam
+    [[0.5, 0, 0.5, 1], [0, 0.5, 0.5, 0.5], [0.5, 0.33, 1, 0.33], [0.5, 0.7, 1, 0.7]].forEach(([a, b, c, d]) => {
+      g.beginPath(); g.moveTo(a * n, b * n); g.lineTo(c * n, d * n); g.stroke();
+    });
+    g.fillStyle = "#d0d0d0";                              // rivet rows along the seams
+    for (let i = 8; i < n; i += 16) {
+      [6, n - 6].forEach((p) => { g.beginPath(); g.arc(i, p, 2.2, 0, 7); g.fill(); g.beginPath(); g.arc(p, i, 2.2, 0, 7); g.fill(); });
+      g.beginPath(); g.arc(n / 2 + 7, i, 2, 0, 7); g.fill();
+    }
+    for (let i = 0; i < 1400; i++) {                      // faint brushing / wear
+      g.fillStyle = r() > 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+      g.fillRect(r() * n, r() * n, 20 + r() * 60, 1);
+    }
+  }, false);
+  const grimeTex = () => canvasTexture("grime", 256, (g, n) => {
+    const r = rng(31);
+    g.fillStyle = "#9a9a9a";
+    g.fillRect(0, 0, n, n);
+    for (let i = 0; i < 500; i++) {
+      const v = (110 + r() * 110) | 0;
+      g.fillStyle = `rgba(${v},${v},${v},0.18)`;
+      g.beginPath(); g.arc(r() * n, r() * n, 2 + r() * 14, 0, 7); g.fill();
+    }
+  }, false);
+
   /* Soft round fade, used so the ground disc blends into the background */
   const fadeTex = () => canvasTexture("fade", 256, (g, n) => {
     const grad = g.createRadialGradient(n / 2, n / 2, n * 0.25, n / 2, n / 2, n / 2);
@@ -160,12 +192,12 @@
     gold: () => std({ map: foilTex("gold"), bumpMap: foilTex("gold"), bumpScale: 0.012, metalness: 0.9, roughness: 0.32, envMapIntensity: 1.2 }),
     silverFoil: () => std({ map: foilTex("silver"), bumpMap: foilTex("silver"), bumpScale: 0.01, metalness: 0.85, roughness: 0.3 }),
     blackFoil: () => std({ map: foilTex("black"), bumpMap: foilTex("black"), bumpScale: 0.01, metalness: 0.3, roughness: 0.55 }),
-    alu: () => std({ color: 0xc8ced8, metalness: 0.95, roughness: 0.28 }),
-    paint: () => std({ color: 0xeef0f3, metalness: 0.05, roughness: 0.45 }),
-    dark: () => std({ color: 0x2b303b, metalness: 0.6, roughness: 0.45 }),
+    alu: () => std({ color: 0xc8ced8, metalness: 0.95, roughness: 0.26, bumpMap: panelTex(), bumpScale: 0.004, roughnessMap: grimeTex() }),
+    paint: () => std({ color: 0xeef0f3, metalness: 0.05, roughness: 0.5, bumpMap: panelTex(), bumpScale: 0.006, roughnessMap: grimeTex() }),
+    dark: () => std({ color: 0x2b303b, metalness: 0.6, roughness: 0.45, bumpMap: panelTex(), bumpScale: 0.004 }),
     black: () => std({ color: 0x121419, metalness: 0.2, roughness: 0.65 }),
     lens: () => std({ color: 0x05070c, metalness: 0.9, roughness: 0.05 }),
-    carbon: () => std({ color: 0x343a47, metalness: 0.55, roughness: 0.35 }),
+    carbon: () => std({ color: 0x343a47, metalness: 0.55, roughness: 0.35, bumpMap: panelTex(), bumpScale: 0.003 }),
     solar: (rx = 1, ry = 1) => {
       const t = solarTex().clone();
       t.needsUpdate = true;
@@ -176,7 +208,7 @@
     orange: () => std({ color: 0xe0752d, metalness: 0.15, roughness: 0.55 }),
     steel: () => std({ color: 0xc5cad2, metalness: 1, roughness: 0.22 }),
     // (a perfect mirror in space would reflect black, so these keep a little of their own colour)
-    mirror: () => std({ color: 0xd99a12, metalness: 0.9, roughness: 0.2, envMapIntensity: 1.5, emissive: 0x2a1600 }),
+    mirror: () => new T.MeshPhysicalMaterial({ color: 0xffb21e, metalness: 1, roughness: 0.16, clearcoat: 0.5, clearcoatRoughness: 0.1, envMapIntensity: 2.2, emissive: 0x4a2a00 }),
     glass: () => std({ color: 0xb9cde4, metalness: 0.85, roughness: 0.12, envMapIntensity: 1.4, emissive: 0x0a121c }),
     shield: () => std({ color: 0x7c6eb0, metalness: 0.85, roughness: 0.32, side: T.DoubleSide, envMapIntensity: 1.2 }),
     rtg: () => std({ color: 0x4d525e, metalness: 0.75, roughness: 0.4, emissive: 0x3a0e00 }),
@@ -191,7 +223,16 @@
     m.position.set(x, y, z);
     return m;
   }
-  const box = (w, h, d, mat, x, y, z) => mesh(new T.BoxGeometry(w, h, d), mat, x, y, z);
+  const boxGeoCache = {};
+  function boxGeo(w, h, d) {
+    const key = [w, h, d].map((v) => v.toFixed(3)).join("|");
+    if (boxGeoCache[key]) return boxGeoCache[key];
+    const r = Math.min(0.035, Math.min(w, h, d) * 0.2);
+    const g = T.RoundedBoxGeometry && r > 0.004 ? new T.RoundedBoxGeometry(w, h, d, 2, r) : new T.BoxGeometry(w, h, d);
+    g.userData.shared = true;
+    return (boxGeoCache[key] = g);
+  }
+  const box = (w, h, d, mat, x, y, z) => mesh(boxGeo(w, h, d), mat, x, y, z);
   const cyl = (rt, rb, h, mat, x, y, z, seg = 32) => mesh(new T.CylinderGeometry(rt, rb, h, seg), mat, x, y, z);
   const sphere = (r, mat, x, y, z) => mesh(new T.SphereGeometry(r, 32, 20), mat, x, y, z);
 
@@ -309,6 +350,15 @@
       gr.rotation.y = -a;
       w.add(gr);
     }
+    for (let i = 0; i < 6; i++) { // curved titanium-style spokes on the outer face
+      const a = (i / 6) * Math.PI * 2;
+      const sp = box(0.03, 0.035, 0.2, M.alu(), Math.cos(a) * 0.22, 0.17, Math.sin(a) * 0.22);
+      sp.rotation.y = -a + Math.PI / 2 + 0.35;
+      w.add(sp);
+    }
+    w.add(cyl(0.07, 0.07, 0.4, M.steel(), 0, 0, 0, 16));
+    w.add(mesh(new T.TorusGeometry(0.335, 0.012, 8, 40), M.alu(), 0, 0.165, 0).rotateX(Math.PI / 2));
+    w.add(mesh(new T.TorusGeometry(0.335, 0.012, 8, 40), M.alu(), 0, -0.165, 0).rotateX(Math.PI / 2));
     w.rotation.x = Math.PI / 2; // axle points along z
     w.position.set(x, y, z);
     return w;
@@ -661,7 +711,11 @@
     const pm = new T.PMREMGenerator(renderer);
     const env = new T.Scene();
     const geo = new T.SphereGeometry(50, 32, 16);
-    const top = new T.Color(kind === "studio" ? 0xffffff : 0x9fb6e0), mid = new T.Color(kind === "studio" ? 0xc9d4e4 : 0x2a3654), bot = new T.Color(kind === "studio" ? 0x8a96a8 : 0x07090f);
+    const PAL = {
+      space: [0x9fb6e0, 0x2a3654, 0x07090f], studio: [0xffffff, 0xc9d4e4, 0x8a96a8],
+      mars: [0x8a5a40, 0xd9a878, 0x6a3420], moon: [0x0a0c12, 0x3a3a3c, 0x8a8a8a], orbit: [0x0a1020, 0x2a3a5a, 0x2f6cc0],
+    }[kind] || [0x9fb6e0, 0x2a3654, 0x07090f];
+    const top = new T.Color(PAL[0]), mid = new T.Color(PAL[1]), bot = new T.Color(PAL[2]);
     const cols = [];
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
@@ -691,5 +745,7 @@
   window.Models = {
     buildCraft, buildRover, buildTelescope, buildLander, buildRocket, setTelescopeDeploy,
     makeEnvMap, enableShadows, groundTexture, fadeTex, floorTex,
+    // Shared building blocks, reused by the detailed spacecraft in craftmodels.js
+    kit: { M, mesh, box, cyl, sphere, rod, solarPanel, wheel, hexPositions, nose, foilTex },
   };
 })();
