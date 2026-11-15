@@ -304,7 +304,11 @@
        3.2 s  liftoff: tower arms swing away, smoke column, sparks
        6.2 s  long-lens tracking shot, climbing through the clouds, Max-Q
       10.5 s  space: Earth below, stage separation, second stage burns
-      13.8 s  orbit reached → the playable mission starts
+      13.4 s  Mars & Moon: engine off in a "parking orbit" around Earth,
+              then a second burn sends the spacecraft on its way
+              (to Mars: escaping Earth, it then orbits the Sun until it
+              meets Mars). Webb skips the parking orbit and heads to L2.
+      ~19 s   "8 months later…" → the playable mission starts
      ===================================================================== */
   function startLaunch() {
     stage = "launch";
@@ -496,6 +500,30 @@
     c.querySelector("#fSkipLaunch").addEventListener("click", () => startPlay());
 
     // ---- State ----
+    /* How each real mission left Earth (simplified):
+       • Curiosity: parked in Earth orbit, then the Centaur stage fired again ("trans-Mars injection")
+         to escape Earth. After that it orbited the Sun for about 8 months until it met Mars.
+       • Apollo 11: parked in Earth orbit, then "trans-lunar injection" sent it on a long loop out to
+         the Moon (which itself orbits Earth), arriving about 4 days later.
+       • Webb: no parking orbit; the Ariane 5 sent it straight on a path to L2, reached about a month later. */
+    const J = {
+      "mars-rover": { parking: true, burn: "TRANS-MARS INJECTION", burnShort: "MARS BURN",
+        burnMsg: "🔥 Second burn: speeding up to escape Earth's gravity",
+        away: "ON THE WAY TO MARS", awayMsg: "☀️ Free of Earth, the spacecraft now orbits the Sun, on a path that meets Mars",
+        later: "ABOUT 8 MONTHS LATER…", arrive: "🔴 Arriving at Mars: entry, descent and landing!", escape: 41000 },
+      "lunar-lander": { parking: true, burn: "TRANS-LUNAR INJECTION", burnShort: "MOON BURN",
+        burnMsg: "🔥 Second burn: speeding up to leave Earth orbit for the Moon",
+        away: "ON THE WAY TO THE MOON", awayMsg: "🌕 Now coasting on a long loop out to the Moon (the Moon itself orbits Earth)",
+        later: "ABOUT 4 DAYS LATER…", arrive: "🌕 Arriving at the Moon: time to land!", escape: 39000 },
+      "deep-space-telescope": { parking: false,
+        away: "ON COURSE TO L2", awayMsg: "🔭 No parking orbit: the rocket sent Webb straight towards L2, 1.5 million km from Earth",
+        later: "ABOUT 1 MONTH LATER…", arrive: "🔭 Arriving at L2: time to unfold the telescope!", escape: 36000 },
+    }[mission.id] || { parking: false, away: "ON ITS WAY", awayMsg: "", later: "LATER…", arrive: "", escape: 36000 };
+    // timeline for the second stage (seconds into the launch)
+    const TL = J.parking
+      ? { burn1End: 13.4, orbit: 13.6, burn2: 15.0, burn2End: 16.9, away: 16.8, skip: 18.6, play: 20.2 }
+      : { burn1End: 14.6, orbit: null, burn2: null, burn2End: null, away: 13.8, skip: 15.8, play: 17.4 };
+    const burning = (t) => (t >= 11.3 && t < TL.burn1End) || (TL.burn2 != null && t >= TL.burn2 && t < TL.burn2End);
     const roar = snd.loop("rocket");
     let stage2 = null;
     let lastCount = null, lastShot = -1, shake = 0, bigUntil = 0;
@@ -568,14 +596,29 @@
           }
         });
         once("s2", 11.3, () => { msg("🔵 Second stage ignition", 2200); snd.play("stage2"); stage2 = snd.loop("thruster"); });
-        once("orbit", 13.8, () => { say("ORBIT REACHED", 2); snd.play("orbit"); msg("🛰 Your spacecraft is on its way!", 2500); });
+        if (TL.orbit != null) {
+          once("seco", TL.burn1End, () => msg("Second stage engine cut-off", 1200));
+          once("orbit", TL.orbit, () => { say("EARTH ORBIT", 1.6); snd.play("orbit");
+            msg("🛰 A \"parking orbit\" around Earth, about 185 km up. Not fast enough to leave Earth yet!", 2800); });
+          once("burn2", TL.burn2, () => { say(J.burn, 1.6); snd.play("stage2"); msg(J.burnMsg, 2200); });
+        }
+        once("away", TL.away, () => { say(J.away, 1.8); snd.play("orbit"); if (J.awayMsg) msg(J.awayMsg, 3200); });
+        once("skip", TL.skip, () => {
+          // time skip: fade to black for the long cruise
+          const el = $f("fFade");
+          el.style.transition = "opacity 0.8s ease-in";
+          el.style.opacity = "1";
+          say(J.later, 3);
+          msg(J.arrive, 2600);
+          snd.stopAll(0.8);
+        });
         if (bigUntil && t > bigUntil) { big(""); bigUntil = 0; }
 
         // ---------- rocket motion ----------
         const f = flight(t);
         if (!sepDone) { place(upper, f); place(lower, f); }
         else {
-          if (t > 11.3) upperVel.addScaledVector(sepDir, 7 * dt);   // second stage pushes ahead
+          if (burning(t)) upperVel.addScaledVector(sepDir, 7 * dt); // second stage pushes ahead while its engine burns
           upper.position.addScaledVector(upperVel, dt);
           lowerVel.addScaledVector(sepDir, -2.2 * dt);              // spent first stage falls behind
           lower.position.addScaledVector(lowerVel, dt);
@@ -589,13 +632,14 @@
         if (earth) {                       // Earth, Sun and stars stay put around the rocket
           earth.position.copy(upper.position).add(earthOff);
           earth.rotation.y += dt * 0.012;
+          if (t > TL.away) earthOff.add(v3(0, -45 * dt, 25 * dt)); // Earth shrinks away behind us
           sunG.position.copy(upper.position).add(sunOff);
           milky.position.copy(upper.position);
         }       // how thin the air is (0 = ground, 1 = space)
         plume1.userData.update(t, sepDone ? 0 : t < 2.6 ? 0 : Math.min(1, (t - 2.6) * 2.5), thin);
-        plume2.userData.update(t, t < 11.3 ? 0 : Math.min(1, (t - 11.3) * 2), 1);
+        plume2.userData.update(t, burning(t) ? Math.min(1, (t - (t >= (TL.burn2 || 99) ? TL.burn2 : 11.3)) * 2) : 0, 1);
         roar.set(t < 2.6 ? 0 : sepDone ? 0 : Math.min(1, (t - 2.6) * 2) * Math.max(0.25, 1 - Math.max(0, t - 4) / 7));
-        if (stage2) stage2.set(0.55);
+        if (stage2) stage2.set(burning(t) ? 0.55 : 0);
 
         // tower arms swing away at liftoff, the beacon blinks
         const armK = Math.min(1, Math.max(0, (t - 3.0) / 1.3));
@@ -701,15 +745,31 @@
         let altKm = Math.max(0, (alt - 0.6) * 0.6);
         let speed = 0;
         if (t > 3.2) speed = Math.min(7750, 2.75 * Math.pow(L, 1.2) * 260);
-        if (t > 10.5) { altKm = 59 + (t - 10.5) * 28; speed = 7750 + Math.min(1, (t - 10.5) / 3.6) * 20250; }
+        if (t > 10.5) {
+          if (J.parking) {
+            altKm = Math.min(185, 59 + (t - 10.5) * 44);
+            speed = 7750 + Math.min(1, (t - 10.5) / 2.9) * 20250;                       // ~28,000 km/h: orbital speed
+            if (t > TL.burn2) {                                                          // second burn: escape speed
+              speed = 28000 + Math.min(1, (t - TL.burn2) / (TL.burn2End - TL.burn2)) * (J.escape - 28000);
+              altKm = 185 + (t - TL.burn2) * 260;
+            }
+          } else {
+            altKm = 59 + (t - 10.5) * 70;
+            speed = 7750 + Math.min(1, (t - 10.5) / 4.1) * (J.escape - 7750);
+          }
+        }
         stats([
           { label: "MISSION TIME", value: t < 3.2 ? `T−00:0${Math.ceil(3.2 - t)}` : `T+00:${pad2(L)}` },
           { label: "ALTITUDE", value: `${altKm.toFixed(altKm < 10 ? 1 : 0)} km` },
           { label: "SPEED", value: `${Math.round(speed).toLocaleString("en-US")} km/h` },
-          { label: "STAGE", value: !sepDone ? "1 · BOOST" : t < 11.3 ? "COAST" : "2 · ORBIT BURN", color: sepDone ? "#93c5fd" : "#fdba74" },
+          { label: "STAGE", value: !sepDone ? "1 · BOOST" : t < 11.3 ? "COAST"
+              : t < TL.burn1End ? (J.parking ? "2 · ORBIT BURN" : "2 · BURN TO L2")
+              : TL.burn2 != null && t < TL.burn2 ? "PARKING ORBIT"
+              : TL.burn2End != null && t < TL.burn2End ? "2 · " + J.burnShort
+              : J.parking && mission.id === "mars-rover" ? "ORBITING THE SUN" : "COASTING", color: sepDone ? "#93c5fd" : "#fdba74" },
         ]);
 
-        if (t > 15.3) startPlay();
+        if (t > TL.play) startPlay();
       },
     };
   }
@@ -1051,6 +1111,11 @@
   function startPlay() {
     snd.stopAll(0.8);
     $f("fBars").classList.remove("on");
+    const fade = $f("fFade");                     // fade back in after the "months later" cut
+    if (fade.style.opacity && fade.style.opacity !== "0") {
+      fade.style.transition = "opacity 1.2s ease-out";
+      requestAnimationFrame(() => (fade.style.opacity = "0"));
+    }
     big("");
     msg("");
     stage = "play";

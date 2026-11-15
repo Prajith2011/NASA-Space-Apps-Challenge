@@ -77,7 +77,10 @@ Everything is drawn in code (no image or model files), using Three.js:
   floodlight beams, blinking tower beacon), ignition with water-deluge steam and sparks, a low "thunder past the
   camera" liftoff as the tower arms swing away, a long-lens tracking shot through the clouds as the sky turns black,
   then space: Earth's glowing horizon below, the rocket splitting at its stage line, the spent stage tumbling away and
-  the second stage burning blue to orbit. Live readouts show mission time, altitude, speed and stage.
+  the second stage burning blue. The ending follows each real mission: Curiosity and Apollo first coast in a "parking
+  orbit" around Earth, then fire again (trans-Mars / trans-lunar injection); after escaping Earth, the Mars spacecraft
+  orbits the Sun until it meets Mars ("about 8 months later…"). Webb skips the parking orbit and heads straight to L2.
+  Live readouts show mission time, altitude, speed and stage.
 - **Smooth on any computer:** if frames get slow (for example on a laptop's built-in graphics), the 3D views
   automatically render fewer pixels.
 
