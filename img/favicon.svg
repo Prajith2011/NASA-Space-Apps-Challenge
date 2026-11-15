@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Space Mission Cube logo: a 3x3 cube face (same colours as the header logo) -->
+  <defs><clipPath id="r"><rect x="2" y="2" width="60" height="60" rx="11"/></clipPath></defs>
+  <g clip-path="url(#r)">
+    <rect x="32" y="2" width="30" height="30" fill="#22d3ee"/>
+    <rect x="32" y="32" width="30" height="30" fill="#34d399"/>
+    <rect x="2" y="32" width="30" height="30" fill="#f43f5e"/>
+    <rect x="2" y="2" width="30" height="30" fill="#fbbf24"/>
+    <g fill="#04060f">
+      <rect x="21.2" y="2" width="2.6" height="60"/><rect x="40.4" y="2" width="2.6" height="60"/>
+      <rect x="2" y="21.2" width="60" height="2.6"/><rect x="2" y="40.4" width="60" height="2.6"/>
+    </g>
+    <rect x="2" y="2" width="60" height="60" rx="11" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="2"/>
+  </g>
+</svg>
