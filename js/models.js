@@ -297,8 +297,8 @@
             cyl(wide ? 0.52 : 0.38, wide ? 0.52 : 0.38, wide ? 1.4 : 1.1, M.paint(), 0, wide ? 5.95 : 5.8, 0),
             ogive(wide ? 0.52 : 0.38, wide ? 1.2 : 0.95, M.paint(), wide ? 6.65 : 6.35), engines(1, 0.24, -0.15, 0));
         if (wide) {
-          for (let i = 0; i < 5; i++) {
-            const a = (i / 5) * Math.PI * 2, bx = Math.cos(a) * 0.5, bz = Math.sin(a) * 0.5;
+          for (let i = 0; i < 4; i++) { // "541" = 5 m fairing, 4 solid boosters, 1 upper-stage engine
+            const a = (i / 4) * Math.PI * 2 + Math.PI / 4, bx = Math.cos(a) * 0.5, bz = Math.sin(a) * 0.5;
             add(cyl(0.12, 0.12, 1.8, M.paint(), bx, 0.95, bz), nose(0.12, 0.35, M.paint(), bx, 2.02, bz),
                 mesh(new T.CylinderGeometry(0.06, 0.11, 0.2, 12, 1, true), M.bell(), bx, -0.05, bz));
           }

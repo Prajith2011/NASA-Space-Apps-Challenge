@@ -73,6 +73,7 @@
     <nav class="tut-card mb-10">
       <p class="font-display text-xs tracking-widest text-slate-400 mb-3">ON THIS PAGE</p>
       <ol class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm list-decimal list-inside text-slate-300">
+        <li><a class="hover:text-cyan-300" href="#levels">Choose your level</a></li>
         <li><a class="hover:text-cyan-300" href="#hangar">The Spacecraft Hangar</a></li>
         <li><a class="hover:text-cyan-300" href="#inspect">Inspecting parts & their risks</a></li>
         <li><a class="hover:text-cyan-300" href="#diagnose">Diagnose: finding the dangers</a></li>
@@ -88,6 +89,27 @@
         <li><a class="hover:text-cyan-300" href="#tips">Tips & questions</a></li>
       </ol>
     </nav>
+
+    <!-- Levels -->
+    <section id="levels" class="mb-14 scroll-mt-24">
+      <h2 class="font-display text-2xl text-white mb-2">Choose your level</h2>
+      <p class="text-slate-400 mb-4">The first page asks which level you'd like to try. Each level has its own page with matching words and challenges. You can switch any time with the level badge in the top bar.</p>
+      <div class="tut-card overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-slate-400"><th class="py-2 pr-4"></th><th class="py-2 pr-4">🌱 Beginner</th><th class="py-2 pr-4">🚀 Intermediate</th><th class="py-2">🧑‍🚀 Advanced</th></tr></thead>
+          <tbody class="divide-y divide-slate-800 text-slate-300">
+            <tr><td class="py-2 pr-4 text-white font-semibold">Words</td><td class="py-2 pr-4">Simple words for every part, plus a word helper</td><td class="py-2 pr-4">Real engineering terms, plus a word helper</td><td class="py-2">Full technical language (telemetry, fault codes)</td></tr>
+            <tr><td class="py-2 pr-4 text-white font-semibold">Dangers per scan</td><td class="py-2 pr-4">Exactly 5, slower scan</td><td class="py-2 pr-4">5–7</td><td class="py-2">7–9, fast scan, severity hidden until you open it</td></tr>
+            <tr><td class="py-2 pr-4 text-white font-semibold">Risks per part</td><td class="py-2 pr-4">The 2 most important</td><td class="py-2 pr-4">All</td><td class="py-2">All</td></tr>
+            <tr><td class="py-2 pr-4 text-white font-semibold">Workshop</td><td class="py-2 pr-4">Easy mode always on, unlimited hints</td><td class="py-2 pr-4">Easy mode on (can turn off)</td><td class="py-2">Easy mode off, numbers shown, 1 hint per mission</td></tr>
+            <tr><td class="py-2 pr-4 text-white font-semibold">Moon landing</td><td class="py-2 pr-4">Below 5 m/s, 35% more fuel</td><td class="py-2 pr-4">Below 4 m/s</td><td class="py-2">Below 3 m/s, 10% less fuel</td></tr>
+            <tr><td class="py-2 pr-4 text-white font-semibold">Mars rover</td><td class="py-2 pr-4">Battery drains slower</td><td class="py-2 pr-4">Normal</td><td class="py-2">Battery drains faster</td></tr>
+            <tr><td class="py-2 pr-4 text-white font-semibold">Telescope</td><td class="py-2 pr-4">The right next step glows</td><td class="py-2 pr-4">No help</td><td class="py-2">No help</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-sm text-slate-400 mt-3">🔎 <b class="text-white">Word helper:</b> on Beginner and Intermediate, tricky words have a dotted underline. Hover over or tap them to see what they mean.</p>
+    </section>
 
     <!-- ================= PART 1: THE SPACECRAFT HANGAR ================= -->
     <p class="part-label mb-4">PART 1 · THE SPACECRAFT HANGAR</p>
@@ -133,7 +155,7 @@
             <li><b class="text-emerald-300">✓ SAFE</b> lines turn green in the feed. Safe parts are left alone in 3D.</li>
             <li><b class="text-rose-300">✗ DANGER</b> lines turn red. The part glows red with a pulsing outline, a shock-wave ring pops out of it, and dangerous connections appear as glowing red links between the two parts.</li>
           </ul>
-          <p class="text-sm">🎲 Every spacecraft always hides <b class="text-white">at least 5 dangers</b>, and they are <b class="text-white">different every time you open it</b>. Running the scan again simulates another year in space with new problems.</p>
+          <p class="text-sm">🎲 Every spacecraft always hides <b class="text-white">at least 5 dangers</b> (exactly 5 on Beginner, 5–7 on Intermediate, 7–9 on Advanced), and they are <b class="text-white">different every time you open it</b>. Running the scan again simulates another year in space with new problems.</p>
         </div>
         <div class="tut-card space-y-2 text-sm" aria-label="Example diagnostic feed">
           <p class="font-display text-xs tracking-widest text-slate-400 mb-1">EXAMPLE FEED</p>
@@ -338,7 +360,7 @@
     <!-- 6. Finale -->
     <section id="finale" class="mb-14 scroll-mt-24">
       <h2 class="font-display text-2xl text-white mb-2">10 · Launch & the 3D finale</h2>
-      <p class="text-slate-400 mb-5">When the checklist is all YES, press <b class="text-emerald-300">🚀 LAUNCH THE MISSION!</b> You watch your rocket lift off in a short movie (countdown, ignition, liftoff, climbing through the clouds, stage separation in space, then the journey: Mars and Moon missions first "park" in orbit around Earth, then fire again to head off. A spacecraft going to Mars escapes Earth completely and orbits the Sun for about 8 months until it meets Mars. Live altitude and speed are shown; press "Skip launch" to jump ahead), then you <b>play the mission with the spacecraft you designed</b>. Your design choices really matter here.</p>
+      <p class="text-slate-400 mb-5">When the checklist is all YES, press <b class="text-emerald-300">🚀 LAUNCH THE MISSION!</b> You watch your rocket lift off in a short movie filmed from six cameras (wide shot of the pad at dusk, a close-up of the engines lighting, a camera on the tower, a long-lens tracking shot through the clouds, a camera on the rocket looking down at Earth, and a chase camera in space). You'll see booster separation, stage separation and the nose cone (fairing) opening to reveal your spacecraft. Then comes the journey: Mars and Moon missions first "park" in orbit around Earth, then fire again to head off. A spacecraft going to Mars escapes Earth completely and orbits the Sun for about 8 months until it meets Mars. Live altitude and speed are shown; press "Skip launch" to jump ahead), then you <b>play the mission with the spacecraft you designed</b>. Your design choices really matter here.</p>
       <div class="grid sm:grid-cols-3 gap-3 text-sm">
         <div class="tut-card">
           <p class="text-3xl mb-2">🌕</p>

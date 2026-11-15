@@ -13,6 +13,9 @@
   const app = $("app");
   const E = window.Engine;
   const has3D = () => window.Viewer3D && Viewer3D.available();
+  // Difficulty level of this page (js/level.js)
+  const LV = window.LEVEL || { id: "intermediate", name: "Intermediate", icon: "🚀", hints: Infinity, easyLocked: false, easyDefault: true, numbersOpen: false, glossify: null };
+  const gl = (t) => (LV.glossify ? LV.glossify(t) : esc(t));
 
   let timerHandle = null;
   let volume = 0.7;   // master volume 0–1 (the slider in the top bar)
@@ -286,7 +289,7 @@
       </div>
 
       <div class="grid gap-5 lg:grid-cols-2 mt-8">
-        <details class="rounded-xl border border-slate-700/60 bg-space-900/60 p-4" ${storage.get("smc-numbers") === "open" ? "open" : ""} id="numbersBox">
+        <details class="rounded-xl border border-slate-700/60 bg-space-900/60 p-4" ${(storage.get("smc-numbers-" + LV.id) || (LV.numbersOpen ? "open" : "")) === "open" ? "open" : ""} id="numbersBox">
           <summary class="cursor-pointer font-display text-sm tracking-widest text-slate-300">📊 SHOW THE NUMBERS</summary>
           <div class="space-y-3 mt-4">${constraints.map(gaugeHtml).join("")}</div>
         </details>
@@ -318,7 +321,7 @@
       item.addEventListener("mouseenter", () => has3D() && Viewer3D.highlight(item.dataset.affects.split(",")));
       item.addEventListener("mouseleave", () => has3D() && Viewer3D.highlight([]));
     });
-    $("numbersBox").addEventListener("toggle", (e) => storage.set("smc-numbers", e.target.open ? "open" : "closed"));
+    $("numbersBox").addEventListener("toggle", (e) => storage.set("smc-numbers-" + LV.id, e.target.open ? "open" : "closed"));
     $("resetBtn").addEventListener("click", () => { sfx.click(); startMission(m); });
     $("hintBtn").addEventListener("click", showHint);
     if ($("repairBack")) $("repairBack").addEventListener("click", () => { sfx.click(); Hangar.returnFromWorkshop(repairCtx.craftId, false); });
@@ -383,8 +386,8 @@
           <span class="text-sm text-white font-semibold flex-1">${esc(c.question || c.label)}</span>
           <span class="font-display text-xs text-rose-300">NO</span>
         </div>
-        <p class="text-xs text-rose-200 mt-2 ml-9">${whyText(c.why)}</p>
-        ${c.fix ? `<p class="text-xs text-amber-200 mt-1 ml-9">💡 ${esc(c.fix)}</p>` : ""}
+        <p class="text-xs text-rose-200 mt-2 ml-9">${LV.glossify ? gl(String(c.why).replace(/\b\d{4,}\b/g, (d) => Number(d).toLocaleString("en-US"))) : whyText(c.why)}</p>
+        ${c.fix ? `<p class="text-xs text-amber-200 mt-1 ml-9">💡 ${gl(c.fix)}</p>` : ""}
         ${affects.length ? `<div class="flex flex-wrap gap-1 mt-2 ml-9"><span class="text-[11px] text-slate-400 mr-1">Parts to try:</span>
           ${affects.map((id) => { const s = m.slots.find((x) => x.id === id); return `<button data-open="${id}" class="part-chip">${s.icon} ${s.label}</button>`; }).join("")}</div>` : ""}
       </div>`;
@@ -537,6 +540,11 @@
   /* ---------------- Hint ---------------- */
   function showHint() {
     const st = E.state;
+    if (st.hints >= LV.hints) {
+      sfx.bad();
+      toast(`🧑‍🚀 <b>Advanced level:</b> only ${LV.hints} hint per mission. Check "Show the numbers" to work it out!`, "hint", 4500);
+      return;
+    }
     const slot = E.hint(st.mission, st.sel);
     if (!slot) return;
     st.hints += 1;
@@ -706,9 +714,14 @@
   });
 
   // Easy mode (preview of what each option fixes/breaks) is ON by default
-  const pref = storage.get("smc-easy");
+  const pref = storage.get("smc-easy-" + LV.id) ?? (LV.easyDefault ? "1" : "0");
   $("previewToggle").checked = pref == null ? true : pref === "1";
-  $("previewToggle").addEventListener("change", (e) => storage.set("smc-easy", e.target.checked ? "1" : "0"));
+  $("previewToggle").addEventListener("change", (e) => storage.set("smc-easy-" + LV.id, e.target.checked ? "1" : "0"));
+  if (LV.easyLocked) {               // Beginner: Easy mode always on
+    $("previewToggle").checked = true;
+    $("previewToggle").disabled = true;
+    $("previewToggle").parentElement.title = "Always on at Beginner level: each choice shows what it would fix or break";
+  }
 
   // Shared with the Spacecraft Hangar (hangar.js)
   window.UI = { startMission, renderMenu, leaveGame, sfx, toast, esc, storage };

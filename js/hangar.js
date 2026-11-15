@@ -15,6 +15,9 @@
   const UI = window.UI;
   const esc = UI.esc;
   const has3D = () => window.Inspector && Inspector.available();
+  const LV = window.LEVEL || { id: "intermediate", name: "Intermediate", icon: "🚀", dangers: [5, 7], scanMs: [170, 290], dangerMs: 700,
+    sevInFeed: true, simple: false, maxVulns: 99, simpleFor: () => null, glossify: (t) => UI.esc(t), reading: null };
+  const dangerText = LV.dangers[0] === LV.dangers[1] ? `${LV.dangers[0]} dangers` : `${LV.dangers[0]}–${LV.dangers[1]} dangers`;
 
   const SEV = {
     C: { label: "Critical", rank: 4 },
@@ -75,9 +78,14 @@
 
     app.innerHTML = `
       <section class="text-center max-w-3xl mx-auto mb-8">
-        <p class="font-display text-xs tracking-[0.3em] text-cyan-400 mb-3">NASA SPACE APPS CHALLENGE 2026</p>
+        <p class="font-display text-xs tracking-[0.3em] text-cyan-400 mb-3">NASA SPACE APPS CHALLENGE 2026 · ${LV.icon} ${LV.name.toUpperCase()} LEVEL</p>
         <h1 class="font-display text-3xl sm:text-5xl font-black text-white mb-4">Spacecraft Hangar</h1>
-        <p class="text-lg text-slate-300 mb-2">Pick a real spacecraft. Explore every part in 3D, run a diagnostic, then fix what it finds.</p>
+        <p class="text-lg text-slate-300 mb-2">${LV.id === "beginner"
+          ? "Pick a real spacecraft. Look at every part in 3D, find out what could go wrong, then fix it."
+          : LV.id === "advanced"
+          ? "Select a flight article. Inspect every subsystem and interface, run full fault detection, then re-engineer the design."
+          : "Pick a real spacecraft. Explore every part in 3D, run a diagnostic, then fix what it finds."}</p>
+        ${LV.id === "beginner" ? `<p class="text-sm text-emerald-300 mb-2">🌱 Beginner level: simple words, and <span class="gloss" tabindex="0" data-def="Like this! Hover over or tap a dotted word to see what it means.">dotted words</span> explain themselves.</p>` : ""}
         <p class="text-slate-400">Each part shows what it does and how it can fail. Dangerous findings go straight to the
           <b class="text-cyan-300">Trade-Off Workshop</b>, where you redesign the spacecraft like a Rubik's cube.</p>
       </section>
@@ -352,7 +360,7 @@
           <p class="text-sm text-slate-400 mb-3">The scan checks every <b class="text-slate-200">part</b> and every <b class="text-slate-200">connection</b>
             (cables, joints, hinges and pipes) one by one. Safe ones turn <span class="text-emerald-300">green</span> here.
             Dangerous ones turn <span class="text-rose-300">red</span> here <b>and</b> glow red on the 3D model.</p>
-          <p class="text-xs text-slate-400 mb-3">🎲 Every spacecraft hides <b class="text-slate-200">at least 5 dangers</b>, and they are different every time you open it.</p>
+          <p class="text-xs text-slate-400 mb-3">🎲 On ${LV.name} level every spacecraft hides <b class="text-slate-200">${dangerText}</b>, and they are different every time you open it.${LV.sevInFeed ? "" : " Severity stays hidden until you open a finding."}</p>
           ${fixed ? `<p class="text-sm text-emerald-300 mb-3">✓ You repaired this spacecraft in the workshop. Run the scan to check your fix!</p>` : ""}
           <button class="diag-btn w-full rounded-lg px-4 py-3 text-sm font-bold font-display tracking-wider" data-run>🩺 START DIAGNOSTIC</button>
         </div>`;
@@ -398,7 +406,7 @@
           <span class="flex items-center gap-1.5"><span class="feed-kind">${f.kind === "conn" ? "LINK" : "PART"}</span><span class="text-sm text-white truncate">${esc(f.item.name)}</span></span>
           <span class="block text-[11px] ${r.fault ? "text-rose-300" : r.state === "pending" ? "text-cyan-300" : "text-emerald-300/90"}">${r.state === "pending" ? text : (r.fault ? "DANGER · " : "SAFE · ") + text}</span>
         </span>
-        ${r.fault ? sevBadge(r.fault.sev) : ""}
+        ${r.fault ? (LV.sevInFeed || (S.diag && S.diag.viewed && S.diag.viewed[r.id]) ? sevBadge(r.fault.sev) : `<span class="sev sev-L" title="Open it to assess">?</span>`) : ""}
       </button>`;
   }
 
@@ -446,11 +454,12 @@
   function pickFaults(craft) {
     const auto = [];
     [...craft.parts, ...craft.connections].forEach((item) =>
-      item.vulns.forEach((v) => auto.push({ id: item.id, sev: v[0], reading: `${v[1]} risk: ${pickOne(METRICS)()}.` })));
-    const n = rnd(5, 7);
+      item.vulns.forEach((v) => auto.push({ id: item.id, sev: v[0], reading: LV.reading ? LV.reading(item, v) : `${v[1]} risk: ${pickOne(METRICS)()}.` })));
+    const n = rnd(LV.dangers[0], LV.dangers[1]);
     const out = {};
     const take = (f) => { if (!out[f.id] && Object.keys(out).length < n) out[f.id] = f; };
-    shuffle(craft.faults).slice(0, rnd(2, 4)).forEach(take);
+    shuffle(craft.faults).slice(0, rnd(2, 4)).forEach((fl) => take(LV.id === "advanced"
+      ? Object.assign({}, fl, { reading: `[FDIR ${rnd(10, 99)}-${rnd(100, 999)}] ${fl.reading}` }) : fl));
     shuffle(auto).forEach(take);
     // make sure at least one finding can be fixed in a matching workshop part
     if (!Object.keys(out).some((id) => find(craft, id).item.slot)) {
@@ -500,7 +509,7 @@
       $("scanStatus").textContent = `🩺 Checking ${name}…`;
       appendFeed(row);
       UI.sfx.tick();
-      await wait(fault ? 700 : 170 + Math.random() * 120);
+      await wait(fault ? LV.dangerMs : LV.scanMs[0] + Math.random() * (LV.scanMs[1] - LV.scanMs[0]));
       if (token !== runToken) return;
 
       row.state = "done";
@@ -526,6 +535,7 @@
     $("scanStatus").textContent = n ? `⚠ ${n} dangerous finding${n > 1 ? "s" : ""}: click the red parts` : "✓ All systems nominal";
     if (!n) $("legend").classList.add("hidden");
     if (n) { UI.sfx.done(); setTimeout(() => UI.sfx.alarm(), 250); } else UI.sfx.win();
+    if (n && LV.id === "beginner") UI.toast("👉 <b>Click a red part</b> (in the list or on the 3D model) to see what's wrong and how to fix it.", "info", 6000);
     renderSide();
     const body = $("sideBody");
     if (body) body.scrollTop = 0;
@@ -580,6 +590,10 @@
     const it = f.item;
     const finding = S.diag && S.diag.found[id];
     const passed = S.diag && S.diag.checked[id];
+    if (finding && S.diag) { S.diag.viewed = S.diag.viewed || {}; S.diag.viewed[id] = true; refreshFeedRow(id); }
+    const simpleLine = LV.simple ? (f.kind === "part" ? LV.simpleFor(craft.id, it)
+      : `A connection (a cable, joint, hinge or pipe) that joins the ${partName(craft, it.a)} and the ${partName(craft, it.b)}.`) : null;
+    const vulnList = it.vulns.slice().sort(byRank).slice(0, LV.maxVulns);
     const slot = slotLabel(craft, it.slot);
     const m = missionOf(craft);
     const links = f.kind === "part" ? craft.connections.filter((c) => c.a === id || c.b === id) : [];
@@ -602,17 +616,20 @@
       ${finding ? `
         <div class="rounded-xl border border-rose-400/60 bg-rose-500/10 p-3 my-3">
           <p class="text-xs font-display tracking-wider text-rose-300 mb-1">⚠ DIAGNOSTIC FINDING ${sevBadge(finding.sev)}</p>
-          <p class="text-sm text-white">${esc(finding.reading)}</p>
+          <p class="text-sm text-white">${LV.glossify(finding.reading)}</p>
         </div>` : passed ? `<p class="text-xs text-emerald-300 my-2">✓ Passed the last diagnostic</p>` : ""}
 
-      <p class="text-sm text-slate-300 my-3">${esc(it.overview)}</p>
+      ${simpleLine ? `<p class="simple-line text-sm text-white my-3">💬 ${esc(simpleLine)}</p>` : ""}
+      ${LV.simple
+        ? `<details class="text-sm text-slate-300 my-3"><summary class="cursor-pointer text-cyan-300">More detail</summary><p class="mt-2">${LV.glossify(it.overview)}</p></details>`
+        : `<p class="text-sm text-slate-300 my-3">${LV.glossify(it.overview)}</p>`}
 
-      <h3 class="side-head">KNOWN VULNERABILITIES (${it.vulns.length})</h3>
+      <h3 class="side-head">${LV.simple ? "WHAT COULD GO WRONG" : "KNOWN VULNERABILITIES"} (${vulnList.length < it.vulns.length ? `top ${vulnList.length} of ${it.vulns.length}` : it.vulns.length})</h3>
       <ul class="space-y-2 mb-4">
-        ${it.vulns.slice().sort(byRank).map(([s, t, d]) => `
+        ${vulnList.map(([s, t, d]) => `
           <li class="vuln vuln-${s}">
             <div class="flex items-center gap-2 mb-0.5">${sevBadge(s)}<b class="text-sm text-white">${esc(t)}</b></div>
-            <p class="text-xs text-slate-400">${esc(d)}</p>
+            <p class="text-xs text-slate-400">${LV.glossify(d)}</p>
           </li>`).join("")}
       </ul>
 
@@ -639,6 +656,17 @@
     $("infoFix").addEventListener("click", () => goWorkshop(id));
     if ($("infoShow")) $("infoShow").addEventListener("click", () => { closeInfo(); Inspector.focus(id); Inspector.select(id); setTimeout(() => S && Inspector.select(null), 2200); });
     $("infoCard").querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => { UI.sfx.click(); openInfo(b.dataset.goto, true); }));
+  }
+
+  function refreshFeedRow(id) {
+    const feed = $("feed");
+    if (!feed || !S.diag) return;
+    const row = S.diag.log.find((r) => r.id === id);
+    const el = feed.querySelector(`[data-item="${id}"]`);
+    if (!row || !el) return;
+    el.outerHTML = feedRowHtml(row);
+    const nel = feed.querySelector(`[data-item="${id}"]`);
+    nel.addEventListener("click", () => openInfo(id, true));
   }
 
   function closeInfo() {

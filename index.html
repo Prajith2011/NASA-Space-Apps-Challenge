@@ -3,140 +3,131 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Space Mission Cube: Engineering Trade-Offs</title>
-  <meta name="description" content="A NASA Space Apps Challenge game: inspect real spacecraft in 3D, diagnose their weak points, and fix broken designs where solving one problem creates another." />
+  <title>Space Mission Cube: Choose your level</title>
+  <meta name="description" content="A NASA Space Apps Challenge game: inspect real spacecraft in 3D, diagnose their weak points, and fix broken designs. Choose Beginner, Intermediate or Advanced." />
 
-  <!-- Fonts: Orbitron for headings, Inter for body text -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
-
-  <!-- Tailwind CSS (Play CDN, pinned version) -->
   <script src="https://cdn.tailwindcss.com/3.4.16"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: {
-            display: ["Orbitron", "sans-serif"],
-            sans: ["Inter", "system-ui", "sans-serif"],
-          },
-          colors: {
-            space: { 950: "#04060f", 900: "#080c1c", 800: "#0e1530", 700: "#16204a" },
-            neon: { cyan: "#22d3ee", green: "#34d399", red: "#f43f5e", amber: "#fbbf24" },
-          },
+          fontFamily: { display: ["Orbitron", "sans-serif"], sans: ["Inter", "system-ui", "sans-serif"] },
+          colors: { space: { 950: "#04060f", 900: "#080c1c", 800: "#0e1530", 700: "#16204a" } },
         },
       },
     };
   </script>
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="stylesheet" href="css/glass.css" />
-  <!-- Sets dark/light mode before the page draws (no flash) -->
   <script src="js/theme.js"></script>
   <script src="js/lively.js"></script>
+  <script src="js/audio.js"></script>
 </head>
 
 <body class="bg-space-950 text-slate-200 font-sans min-h-screen">
   <div class="starfield" aria-hidden="true"></div>
 
-  <!-- ============ Top bar ============ -->
   <header class="relative z-10 border-b border-cyan-500/20 bg-space-900/80 backdrop-blur">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
-      <button id="homeBtn" class="flex items-center gap-2 group" title="Back to the Spacecraft Hangar">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+      <span class="flex items-center gap-2">
         <span class="cube-logo" aria-hidden="true"></span>
-        <span class="font-display font-bold tracking-wider text-sm sm:text-base text-cyan-300 group-hover:text-cyan-200">
-          SPACE MISSION CUBE
-        </span>
-      </button>
-
-      <!-- Speedcubing HUD (only shown during a mission) -->
-      <div id="hud" class="hidden ml-auto flex items-center gap-2 sm:gap-4">
-        <div class="hud-box"><span class="hud-label">TIME</span><span id="timer" class="hud-value">00:00.0</span></div>
-        <div class="hud-box"><span class="hud-label">MOVES</span><span id="moves" class="hud-value">0</span></div>
-        <div class="hud-box hidden sm:flex"><span class="hud-label">PAR</span><span id="par" class="hud-value">–</span></div>
-      </div>
-
-      <nav class="flex items-center gap-1 text-xs">
-        <button id="navHangar" class="nav-btn">🛰 Hangar</button>
-        <button id="navWorkshop" class="nav-btn">🧩 Workshop</button>
-      </nav>
-
-      <div id="toggles" class="flex items-center gap-2 ml-auto" >
-        <a href="tutorial.html" class="hidden sm:inline-flex text-xs text-cyan-200 border border-cyan-400/40 rounded-lg px-2.5 py-1.5 hover:bg-cyan-400/10">📘 Tutorial</a>
-        <label class="toggle" title="When choosing a part, show which checklist answers it would fix or break">
-          <input type="checkbox" id="previewToggle" /> <span>Easy mode</span>
-        </label>
-        <div class="vol" title="Volume">
-          <button id="soundBtn" class="icon-btn" type="button" aria-label="Mute or unmute">🔊</button>
-          <input id="volume" type="range" min="0" max="100" value="70" aria-label="Volume" />
-          <span id="volVal" class="vol-val">70%</span>
-        </div>
-        <button data-theme-toggle class="icon-btn" type="button" aria-label="Switch theme">☀️</button>
-      </div>
+        <span class="font-display font-bold tracking-wider text-sm sm:text-base text-cyan-300">SPACE MISSION CUBE</span>
+      </span>
+      <a href="tutorial.html" class="ml-auto text-xs text-cyan-200 border border-cyan-400/40 rounded-lg px-2.5 py-1.5 hover:bg-cyan-400/10">📘 Tutorial</a>
+      <button data-theme-toggle class="icon-btn" type="button" aria-label="Choose a theme">🎨</button>
     </div>
   </header>
 
-  <main id="app" class="relative z-10 max-w-7xl mx-auto px-4 py-6"></main>
+  <main class="relative z-10 max-w-6xl mx-auto px-4 py-10 sm:py-14">
+    <section class="text-center max-w-2xl mx-auto mb-10 screen-in">
+      <p class="font-display text-xs tracking-[0.3em] text-cyan-400 mb-3">NASA SPACE APPS CHALLENGE 2026</p>
+      <h1 class="font-display text-3xl sm:text-5xl font-black text-white mb-4">Which level would you like to try out?</h1>
+      <p class="text-slate-300">Inspect real NASA spacecraft in 3D, find what could go wrong, then redesign them.
+        Each level has its own page, with words and challenges to match. You can switch any time.</p>
+    </section>
 
-  <!-- ============ Component swap drawer ============ -->
-  <div id="drawerBackdrop" class="fixed inset-0 bg-black/60 z-30 hidden"></div>
-  <aside id="drawer" class="drawer fixed top-0 right-0 h-full w-full sm:w-[460px] z-40 bg-space-900 border-l border-cyan-500/30 overflow-y-auto" aria-hidden="true">
-    <div class="p-5">
-      <div class="flex items-center justify-between mb-1">
-        <h2 id="drawerTitle" class="font-display text-lg text-cyan-300"></h2>
-        <button id="drawerClose" class="icon-btn" aria-label="Close">✕</button>
-      </div>
-      <p class="text-xs text-slate-400 mb-4">Swapping a component counts as one move. Watch what it does to the other gauges!</p>
-      <div id="drawerOptions" class="space-y-3"></div>
-    </div>
-  </aside>
+    <section class="grid gap-5 md:grid-cols-3" aria-label="Levels">
+      <a href="beginner.html" data-level-pick="beginner" class="level-card craft-card card-in mission-card rounded-2xl border border-slate-600/40 bg-space-900/80 p-6 flex flex-col" style="--i:0">
+        <span class="card-glare" aria-hidden="true"></span>
+        <span class="level-emoji">🌱</span>
+        <h2 class="font-display text-2xl text-white mt-3 mb-1">Beginner</h2>
+        <p class="text-sm text-emerald-300 mb-4">New to space? Start here.</p>
+        <ul class="text-sm text-slate-300 space-y-2 flex-1">
+          <li>💬 Every part explained in <b class="text-white">simple words</b></li>
+          <li>🔎 A <b class="text-white">word helper</b>: tap dotted words to see what they mean</li>
+          <li>🩺 Easy diagnostics: <b class="text-white">exactly 5 dangers</b>, a slower scan and tips on what to do</li>
+          <li>🧩 Workshop: Easy mode is always on and hints are unlimited</li>
+          <li>🌕 Gentler missions: more landing fuel and a softer landing limit</li>
+        </ul>
+        <span class="level-go">Start as Beginner →</span>
+      </a>
 
-  <!-- ============ Modal (win screen) ============ -->
-  <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
-    <div id="modalCard" class="modal-card w-full max-w-md rounded-2xl border border-emerald-400/40 bg-space-900 p-6 text-center"></div>
-  </div>
+      <a href="intermediate.html" data-level-pick="intermediate" class="level-card craft-card card-in mission-card rounded-2xl border border-slate-600/40 bg-space-900/80 p-6 flex flex-col" style="--i:1">
+        <span class="card-glare" aria-hidden="true"></span>
+        <span class="level-emoji">🚀</span>
+        <h2 class="font-display text-2xl text-white mt-3 mb-1">Intermediate</h2>
+        <p class="text-sm text-cyan-300 mb-4">The full experience.</p>
+        <ul class="text-sm text-slate-300 space-y-2 flex-1">
+          <li>🛰 Real engineering terms, with the word helper still there</li>
+          <li>🩺 Diagnostics with <b class="text-white">5–7 dangers</b> and sensor readings</li>
+          <li>📋 Every known vulnerability for every part</li>
+          <li>🧩 Workshop: Easy mode on, but you can turn it off</li>
+          <li>🌕 Standard missions: land below 4 m/s</li>
+        </ul>
+        <span class="level-go">Start as Intermediate →</span>
+      </a>
 
-  <!-- ============ Part / connection details (Hangar) ============ -->
-  <div id="infoModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
-    <div id="infoCard" class="modal-card"></div>
-  </div>
+      <a href="advanced.html" data-level-pick="advanced" class="level-card craft-card card-in mission-card rounded-2xl border border-slate-600/40 bg-space-900/80 p-6 flex flex-col" style="--i:2">
+        <span class="card-glare" aria-hidden="true"></span>
+        <span class="level-emoji">🧑‍🚀</span>
+        <h2 class="font-display text-2xl text-white mt-3 mb-1">Advanced</h2>
+        <p class="text-sm text-amber-300 mb-4">Think like a mission engineer.</p>
+        <ul class="text-sm text-slate-300 space-y-2 flex-1">
+          <li>🧪 Full technical language: telemetry, fault codes, link margin</li>
+          <li>🩺 Hard diagnostics: <b class="text-white">7–9 dangers</b>, a fast scan, and severity hidden until you investigate</li>
+          <li>📊 Workshop: Easy mode off, the numbers shown, and only 1 hint per mission</li>
+          <li>🌕 Strict missions: land below 3 m/s with less fuel; the rover's battery drains faster</li>
+        </ul>
+        <span class="level-go">Start as Advanced →</span>
+      </a>
+    </section>
 
-  <!-- ============ Toast messages ============ -->
-  <div id="toasts" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[92%] max-w-lg"></div>
+    <p id="lastLevel" class="text-center text-sm text-slate-400 mt-8"></p>
+  </main>
 
   <footer class="relative z-10 text-center text-xs text-slate-500 py-6 px-4">
     Made for the 2026 NASA Space Apps Challenge, "Space Mission Design Game".
-    Component numbers and diagnostic readings are simplified for gameplay. Spacecraft facts link to NASA sources.
   </footer>
 
-  <!-- 3D engine: Three.js r128 + orbit camera controls (pinned versions) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <!-- Cinematic post-processing (bloom, outlines) + rounded-edge boxes, same pinned version -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/OutlinePass.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
-
-  <!-- Scripts: data → engine → 3D → interface -->
-  <script src="js/audio.js"></script>
-  <script src="js/missions.js"></script>
-  <script src="js/engine.js"></script>
-  <script src="js/models.js"></script>
-  <script src="js/fx.js"></script>
-  <script src="js/viewer3d.js"></script>
-  <script src="js/finale3d.js"></script>
-  <script src="js/ui.js"></script>
-  <!-- Spacecraft Hangar: real spacecraft data → detailed models → 3D inspector → screens -->
-  <script src="js/craftdata.js"></script>
-  <script src="js/craftmodels.js"></script>
-  <script src="js/inspector.js"></script>
-  <script src="js/hangar.js"></script>
+  <script>
+    // Remember the last level, and keep any link destination (e.g. index.html#mars-rover) when you pick a level
+    (function () {
+      const names = { beginner: "🌱 Beginner", intermediate: "🚀 Intermediate", advanced: "🧑‍🚀 Advanced" };
+      let last = null;
+      try { last = localStorage.getItem("smc-level"); } catch (e) { /* ignore */ }
+      if (last && names[last]) {
+        document.getElementById("lastLevel").innerHTML = `Last time you played <b class="text-white">${names[last]}</b>.`;
+        const card = document.querySelector(`[data-level-pick="${last}"]`);
+        if (card) card.classList.add("last-picked");
+      }
+      document.querySelectorAll("[data-level-pick]").forEach((a) => {
+        if (location.hash) a.href = a.getAttribute("href") + location.hash;
+        a.addEventListener("pointerenter", () => window.Sound && Sound.play("hover"));
+        a.addEventListener("click", () => window.Sound && Sound.play("whoosh"));
+        // 3D tilt with a light glare
+        a.addEventListener("pointermove", (e) => {
+          const r = a.getBoundingClientRect();
+          const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+          a.style.transform = `perspective(900px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateY(-4px)`;
+          a.style.setProperty("--gx", (x + 0.5) * 100 + "%");
+          a.style.setProperty("--gy", (y + 0.5) * 100 + "%");
+        });
+        a.addEventListener("pointerleave", () => (a.style.transform = ""));
+      });
+    })();
+  </script>
 </body>
 </html>

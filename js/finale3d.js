@@ -112,6 +112,9 @@
   /* ---------------- Three.js helpers ---------------- */
   let envMap = null;
   let fx = null; // cinematic post-processing (fx.js)
+  let frozen = false; // testing helper: pause the action but keep drawing
+  // difficulty level (js/level.js): landing speed limit, fuel, rover battery drain, telescope hints
+  const LV = window.LEVEL || { id: "intermediate", landSpeed: 4, fuelMul: 1, roverDrain: 1, telescopeHint: false };
   // sound effects (js/audio.js); silent stand-ins if it is missing
   const snd = window.Sound || { play() {}, loop: () => ({ set() {}, stop() {} }), stopAll() {} };
   function newScene(bg) {
@@ -298,28 +301,63 @@
   }
 
   /* =====================================================================
-     STAGE 1 — Launch cinematic (about 15 seconds, several camera shots)
-       0.0 s  dusk on the pad, vapour venting, countdown
-       2.6 s  ignition: water-deluge steam billows out of the flame trench
-       3.2 s  liftoff: tower arms swing away, smoke column, sparks
-       6.2 s  long-lens tracking shot, climbing through the clouds, Max-Q
-      10.5 s  space: Earth below, stage separation, second stage burns
-      13.4 s  Mars & Moon: engine off in a "parking orbit" around Earth,
-              then a second burn sends the spacecraft on its way
-              (to Mars: escaping Earth, it then orbits the Sun until it
-              meets Mars). Webb skips the parking orbit and heads to L2.
-      ~19 s   "8 months later…" → the playable mission starts
+     STAGE 1 — Launch movie (about 20 seconds, six camera shots)
+       0.0 s  wide shot of the pad at dusk: vapour venting, countdown
+       2.4 s  close-up of the engines: ignition, water-deluge steam, sparks
+       3.2 s  liftoff (hold-downs release)
+       3.4 s  camera on the tower: the rocket thunders up past it
+       5.8 s  long-lens tracking shot: clouds, Max-Q vapour cone,
+              solid boosters separate (rockets that have them)
+       9.0 s  camera on the rocket looking down: Earth's curve below,
+              stage separation seen from on board
+      11.0 s  space: second stage ignites, payload fairing opens (Apollo:
+              the launch escape tower is jettisoned)
+      13.4 s  Mars & Moon: parking orbit around Earth, then a second burn.
+              Webb heads straight on towards L2.
+     Then "… later" and the playable mission starts.
+     Rocket shapes, colours and staging come from js/launchvehicles.js.
      ===================================================================== */
+  const EXHAUST = {
+    kerosene: { core: [2.6, 2.2, 1.6], inner: [2.0, 1.0, 0.3], outer: [1.1, 0.45, 0.12], glow: [2.0, 1.1, 0.5], smoke: 0.85 },
+    hydrogen: { core: [2.0, 1.8, 2.2], inner: [1.2, 0.5, 0.42], outer: [0.45, 0.18, 0.2], glow: [1.4, 0.7, 0.6], smoke: 0.45 },
+    solid: { core: [2.8, 2.6, 2.2], inner: [2.4, 1.7, 0.9], outer: [1.4, 0.95, 0.5], glow: [2.4, 1.8, 1.1], smoke: 1.0 },
+    methane: { core: [2.0, 2.1, 2.6], inner: [1.6, 0.9, 0.6], outer: [0.8, 0.45, 0.35], glow: [1.6, 1.1, 1.0], smoke: 0.5 },
+    vacuum: { core: [1.7, 2.0, 2.6], inner: [0.5, 0.75, 1.8], outer: [0.25, 0.35, 0.95], glow: [0.9, 1.2, 2.3] },
+  };
+
+  /* A soft white cone of condensed water vapour that can wrap a rocket near Max-Q */
+  function vapourCone() {
+    const geo = new T.CylinderGeometry(1, 0.55, 1.6, 40, 1, true);
+    const mat = new T.ShaderMaterial({
+      uniforms: { opacity: { value: 0 } },
+      vertexShader: `varying vec3 vN; varying vec3 vV; varying float vL;
+        void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vL = uv.y; gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `uniform float opacity; varying vec3 vN; varying vec3 vV; varying float vL;
+        void main(){ float f = 0.35 + 0.65 * pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 1.2);
+          float a = f * smoothstep(0.0, 0.5, vL) * smoothstep(1.0, 0.75, vL) * opacity; gl_FragColor = vec4(vec3(2.2) * a, a); }`,
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide,
+    });
+    return new T.Mesh(geo, mat);
+  }
+
   function startLaunch() {
     stage = "launch";
     stageT = 0;
     newScene(0x0d1b3a);
-    scene.fog = new T.Fog(0x3a3550, 90, 480);
+    scene.fog = new T.Fog(0x3a3550, 90, 520);
     lights([20, 40, 30], 0.5);
     const starPts = stars(1600, 900);
     starPts.material.transparent = true;
     starPts.material.opacity = 0.25;
     scene.add(starPts);
+
+    // ---- The rocket the player chose (detailed, real proportions) ----
+    const type = parts.launch ? parts.launch.id : "saturnv";
+    const V = LaunchVehicles.build(type, mission.id, parts);
+    const H = V.heightW, RW = V.radiusW, S = H / 12;        // S scales the whole movie to the rocket's size
+    const [s1, s2] = V.stages;
+    scene.add(s1, s2);
+    if (V.payload) V.payload.visible = false;                // hidden inside the fairing until it opens
 
     // ---- Dusk sky dome (fades away as we climb) ----
     const skyC = document.createElement("canvas");
@@ -332,7 +370,7 @@
     const skyTex = new T.CanvasTexture(skyC);
     skyTex.encoding = T.sRGBEncoding;
     const sky = new T.Mesh(new T.SphereGeometry(950, 48, 24), new T.MeshBasicMaterial({ map: skyTex, side: T.BackSide, depthWrite: false, fog: false, transparent: true }));
-    sky.renderOrder = -10; // always drawn first, so smoke and clouds show in front of it
+    sky.renderOrder = -10;
     scene.add(sky);
 
     // ---- The launch site ----
@@ -341,22 +379,66 @@
     const ground = new T.Mesh(new T.PlaneGeometry(1400, 1400), new T.MeshStandardMaterial({ color: 0x26301f, roughness: 1, map: tiled("moon", 120) }));
     ground.rotation.x = -Math.PI / 2;
     site.add(ground);
-    const concrete = () => new T.MeshStandardMaterial({ color: 0x8a8a86, roughness: 0.9, map: tiled("moon", 2) });
-    const pad = new T.Mesh(new T.BoxGeometry(12, 0.6, 12), concrete());
+    // the ocean beside the launch site, catching the sunset
+    const ocean = new T.Mesh(new T.PlaneGeometry(900, 1400), new T.MeshStandardMaterial({ color: 0x0c1830, metalness: 0.6, roughness: 0.18 }));
+    ocean.rotation.x = -Math.PI / 2;
+    ocean.position.set(600, 0.05, 0);
+    site.add(ocean);
+    const concrete = (rep = 2) => new T.MeshStandardMaterial({ color: 0x8a8a86, roughness: 0.9, map: tiled("moon", rep) });
+    const padR = Math.max(9, RW * 3);
+    const pad = new T.Mesh(new T.CylinderGeometry(padR, padR * 1.08, 0.6, 48), concrete(3));
     pad.position.y = 0.3;
-    const trench = new T.Mesh(new T.BoxGeometry(2.4, 0.62, 12.2), new T.MeshStandardMaterial({ color: 0x151515, roughness: 1 }));
+    const trench = new T.Mesh(new T.BoxGeometry(RW * 1.6, 0.62, padR * 2.05), new T.MeshStandardMaterial({ color: 0x151515, roughness: 1 }));
     trench.position.y = 0.3;
     site.add(pad, trench);
-    // water towers / tanks beside the pad
-    [[-15, -13], [16, -12]].forEach(([x, z]) => {
-      const tank = new T.Mesh(new T.CylinderGeometry(1.6, 1.6, 3, 24), new T.MeshStandardMaterial({ color: 0xd8dde4, metalness: 0.4, roughness: 0.4 }));
-      tank.position.set(x, 1.5, z);
-      const dome = new T.Mesh(new T.SphereGeometry(1.6, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), tank.material);
-      dome.position.set(x, 3, z);
-      site.add(tank, dome);
+    // launch mount: four steel legs and a table the rocket stands on
+    const mountY = 0.6, mountH = Math.max(1.0, 0.5 * S);
+    const steelM = () => new T.MeshStandardMaterial({ color: 0x23262c, metalness: 0.35, roughness: 0.8 });
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => {
+      const leg = new T.Mesh(new T.BoxGeometry(0.4 * S, mountH, 0.4 * S), steelM());
+      leg.position.set(a * RW * 1.1, mountY + mountH / 2, b * RW * 1.1);
+      site.add(leg);
     });
+    const table = new T.Mesh(new T.CylinderGeometry(RW * 1.45, RW * 1.45, 0.25 * S, 36, 1, true), steelM());
+    table.position.y = mountY + mountH;
+    site.add(table);
+    const baseY = mountY + mountH + 0.12 * S;                  // the rocket stands on the mount
+    // water tower and tanks
+    const tankM = new T.MeshStandardMaterial({ color: 0xd8dde4, metalness: 0.4, roughness: 0.4 });
+    const wt = new T.Mesh(new T.SphereGeometry(2.6 * S, 24, 16), tankM);
+    wt.position.set(-75 * S, 16 * S, -70 * S);
+    site.add(wt);
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => {
+      const l = new T.Mesh(new T.CylinderGeometry(0.2 * S, 0.2 * S, 15 * S, 8), steelM());
+      l.position.set(-75 * S + a * 1.8 * S, 7.5 * S, -70 * S + b * 1.8 * S);
+      site.add(l);
+    });
+    // the assembly building far away, its windows lit
+    const vab = new T.Mesh(new T.BoxGeometry(60, 70, 50), new T.MeshStandardMaterial({ color: 0x4a4f59, roughness: 0.8 }));
+    vab.position.set(-420, 35, -520);
+    site.add(vab);
+    // four lightning-protection masts with wires over the pad (modern pads; Apollo's pad didn't have them)
+    const hasMasts = type !== "saturnv";
+    const mastH = H * 1.35, mastR = padR * 2.2;
+    const wireMat = new T.LineBasicMaterial({ color: 0x8890a0, transparent: true, opacity: 0.6 });
+    const mastTops = [];
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([a, b]) => {
+      const m = new T.Mesh(new T.CylinderGeometry(0.06 * S, 0.16 * S, mastH, 8), steelM());
+      m.visible = hasMasts;
+      m.position.set(a * mastR, mastH / 2, b * mastR);
+      site.add(m);
+      mastTops.push(new T.Vector3(a * mastR, mastH, b * mastR));
+    });
+    const wires = [];
+    for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) {
+      const A = mastTops[i], B = mastTops[j];
+      const pts = [];
+      for (let k = 0; k <= 16; k++) { const t = k / 16; pts.push(new T.Vector3().lerpVectors(A, B, t).add(new T.Vector3(0, -Math.sin(t * Math.PI) * H * 0.12, 0))); }
+      wires.push(new T.Line(new T.BufferGeometry().setFromPoints(pts), wireMat));
+    }
+    wires.forEach((wr) => { wr.visible = hasMasts; site.add(wr); });
 
-    // steel lattice tower + access arms that swing away at liftoff
+    // steel lattice umbilical tower + access arms that swing away at liftoff
     const steel = () => new T.MeshStandardMaterial({ color: 0xb8402c, metalness: 0.6, roughness: 0.45 });
     const beam = (a, b, r, parent) => {
       const va = new T.Vector3(...a), vb = new T.Vector3(...b);
@@ -367,54 +449,57 @@
       return m;
     };
     const tower = new T.Group();
-    const TH = 19, w = 0.8;
-    [[-w, -w], [w, -w], [w, w], [-w, w]].forEach(([x, z]) => beam([x, 0, z], [x, TH, z], 0.08, tower));
-    for (let y = 0; y < TH; y += 1.4) {
+    const TH = Math.max(14, H * 1.04), w = 0.8 * S, step = 1.4 * S;
+    [[-w, -w], [w, -w], [w, w], [-w, w]].forEach(([x, z]) => beam([x, 0, z], [x, TH, z], 0.08 * S, tower));
+    for (let y = 0; y < TH - 0.1; y += step) {
       [[-w, -w, w, -w], [w, -w, w, w], [w, w, -w, w], [-w, w, -w, -w]].forEach(([x1, z1, x2, z2]) => {
-        beam([x1, y, z1], [x2, y, z2], 0.035, tower);
-        beam([x1, y, z1], [x2, y + 1.4, z2], 0.025, tower);
+        beam([x1, y, z1], [x2, y, z2], 0.035 * S, tower);
+        beam([x1, y, z1], [x2, Math.min(TH, y + step), z2], 0.025 * S, tower);
       });
     }
-    beam([0, TH, 0], [0, TH + 5, 0], 0.05, tower);
-    const beacon = new T.Mesh(new T.SphereGeometry(0.18, 10, 8), new T.MeshBasicMaterial({ color: new T.Color(3, 0.2, 0.15), fog: false }));
-    beacon.position.y = TH + 5.1;
+    beam([0, TH, 0], [0, TH + 4 * S, 0], 0.05 * S, tower);
+    const beacon = new T.Mesh(new T.SphereGeometry(0.18 * S, 10, 8), new T.MeshBasicMaterial({ color: new T.Color(3, 0.2, 0.15), fog: false }));
+    beacon.position.y = TH + 4.1 * S;
     tower.add(beacon);
-    tower.position.set(-4.6, 0.6, 0);
+    const towerX = -(RW * 1.6 + w + 1.2 * S);
+    tower.position.set(towerX, 0.6, 0);
     site.add(tower);
-    const arms = [5.5, 10, 14.5].map((y) => {
+    const armLen = -towerX - w - RW * 0.95;
+    const arms = [0.3, 0.58, 0.86].map((f) => {
       const pivot = new T.Group();
-      pivot.position.set(w, y, 0);
-      beam([0, 0, 0], [2.9, 0, 0], 0.11, pivot);
-      const walk = new T.Mesh(new T.BoxGeometry(2.9, 0.08, 0.7), steel());
-      walk.position.set(1.45, -0.12, 0);
+      pivot.position.set(w, TH * f, 0);
+      beam([0, 0, 0], [armLen, 0, 0], 0.11 * S, pivot);
+      const walk = new T.Mesh(new T.BoxGeometry(armLen, 0.08 * S, 0.7 * S), steel());
+      walk.position.set(armLen / 2, -0.12 * S, 0);
       pivot.add(walk);
       tower.add(pivot);
       return pivot;
     });
 
-    // floodlights with faint light beams, and the glow from the engines
-    [[-14, 10], [14, 10], [0, -16]].forEach(([x, z]) => {
-      const sp = new T.SpotLight(0xdfe8ff, 1.1, 90, 0.42, 0.6);
-      sp.position.set(x, 11, z);
-      sp.target.position.set(0, 7, 0);
+    // floodlights with faint beams, and the glow from the engines
+    [[-16, 12], [16, 12], [0, -18]].forEach(([x, z]) => {
+      x *= S; z *= S;
+      const sp = new T.SpotLight(0xdfe8ff, 1.1, 120 * S, 0.42, 0.6);
+      sp.position.set(x, 12 * S, z);
+      sp.target.position.set(0, H * 0.5, 0);
       scene.add(sp, sp.target);
-      const beamGeo = new T.ConeGeometry(3, 22, 24, 1, true);
-      beamGeo.translate(0, -11, 0);
+      const beamGeo = new T.ConeGeometry(3 * S, 24 * S, 24, 1, true);
+      beamGeo.translate(0, -12 * S, 0);
       const lightBeam = new T.Mesh(beamGeo, new T.MeshBasicMaterial({ color: 0xbfd4ff, transparent: true, opacity: 0.022, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide }));
-      lightBeam.position.set(x, 11, z);
-      lightBeam.lookAt(0, 7, 0);
+      lightBeam.position.set(x, 12 * S, z);
+      lightBeam.lookAt(0, H * 0.5, 0);
       lightBeam.rotateX(-Math.PI / 2);
       site.add(lightBeam);
-      const lamp = new T.Mesh(new T.SphereGeometry(0.3, 10, 8), new T.MeshBasicMaterial({ color: new T.Color(4, 4, 4.4), fog: false }));
-      lamp.position.set(x, 11, z);
+      const lamp = new T.Mesh(new T.SphereGeometry(0.3 * S, 10, 8), new T.MeshBasicMaterial({ color: new T.Color(4, 4, 4.4), fog: false }));
+      lamp.position.set(x, 12 * S, z);
       site.add(lamp);
     });
-    const glow = new T.PointLight(0xff8a3a, 0, 70, 2);
+    const glow = new T.PointLight(0xff8a3a, 0, 90 * S, 2);
     scene.add(glow);
-    // twinkling lights of the space centre on the horizon
     const horizon = new T.Group();
-    for (let i = 0; i < 140; i++) {
+    for (let i = 0; i < 160; i++) {
       const a = Math.random() * Math.PI * 2, r = 140 + Math.random() * 260;
+      if (Math.cos(a) * r > 160) continue; // none out over the ocean
       const s = new T.Sprite(new T.SpriteMaterial({ map: softMap(), color: new T.Color().setHSL(0.08 + Math.random() * 0.06, 0.8, 0.6).multiplyScalar(2.2),
         blending: T.AdditiveBlending, transparent: true, depthWrite: false }));
       s.position.set(Math.cos(a) * r, 0.4 + Math.random() * 2, Math.sin(a) * r);
@@ -423,68 +508,83 @@
     }
     site.add(horizon);
 
-    // ---- The rocket, built twice so it can split at the stage line ----
-    const type = parts.launch ? parts.launch.id : "saturnv";
-    const SEP = { saturnv: 0.34, a401: 0.56, a541: 0.56, d4h: 0.66, medium: 0.55, ariane5: 0.55, superheavy: 0.62 }[type] || 0.5;
-    const S = 1.8;
-    const lower = Models.buildRocket(type), upper = Models.buildRocket(type);
-    [lower, upper].forEach((r) => { r.scale.setScalar(S); scene.add(r); });
-    const bb = new T.Box3().setFromObject(lower);
-    const baseY = bb.min.y / S, topY = bb.max.y / S;
-    const radius = (bb.max.x - bb.min.x) / 2 / S;
-    const sepY = baseY + (topY - baseY) * SEP;
-    const pLow = new T.Plane(), pUp = new T.Plane();
-    lower.traverse((o) => { if (o.isMesh) o.material.clippingPlanes = [pLow]; });
-    upper.traverse((o) => { if (o.isMesh) o.material.clippingPlanes = [pUp]; });
-    const upperBell = new T.Mesh(new T.CylinderGeometry(0.1, 0.24, 0.42, 20, 1, true), new T.MeshStandardMaterial({ color: 0x3a3e46, metalness: 0.9, roughness: 0.35, side: T.DoubleSide }));
-    upperBell.position.y = sepY - 0.2;
-    upperBell.visible = false;
-    upper.add(upperBell);
-    const cutPlanes = () => {
-      [[lower, pLow, -1], [upper, pUp, 1]].forEach(([obj, pl, sgn]) => {
-        obj.updateMatrixWorld();
-        pl.setFromNormalAndCoplanarPoint(new T.Vector3(0, sgn, 0).applyQuaternion(obj.quaternion).normalize(), obj.localToWorld(new T.Vector3(0, sepY, 0)));
-      });
+    // ---- Exhaust plumes (each engine type looks different) ----
+    const plumes = [];
+    const addPlume = (group, ud, vacuum) => {
+      const pal = vacuum ? EXHAUST.vacuum : EXHAUST[ud.exhaust] || EXHAUST.kerosene;
+      const p = makePlume(pal);
+      p.position.y = ud.nozzleY;
+      const k = ud.plumeR / 0.62;
+      p.scale.set(k, k * (vacuum ? 1.4 : 1), k);
+      group.add(p);
+      return p;
     };
-    const plume1 = makePlume({ core: [2.6, 2.3, 1.9], inner: [1.8, 0.85, 0.25], outer: [1.0, 0.42, 0.12], glow: [2.0, 1.1, 0.5] });
-    plume1.position.y = baseY;
-    plume1.scale.setScalar(Math.max(0.8, radius / 0.42));
-    lower.add(plume1);
-    const plume2 = makePlume({ core: [1.7, 2.0, 2.6], inner: [0.5, 0.75, 1.8], outer: [0.25, 0.35, 0.95], glow: [0.9, 1.2, 2.3] });
-    plume2.position.y = sepY - 0.4;
-    plume2.scale.set(0.55, 1.3, 0.55);
-    upper.add(plume2);
+    const plume1 = addPlume(s1, s1.userData);
+    const boosterPlumes = V.boosters.map((b) => addPlume(b, b.userData));
+    const plume2 = addPlume(s2, s2.userData, true);
+    // engine bells glow hot while firing
+    const hotBells = [];
+    s1.traverse((o) => { if (o.isMesh && o.material && o.material.side === T.DoubleSide && o.material.emissive) hotBells.push(o.material); });
+    const cone = vapourCone();
+    scene.add(cone);
 
-    // ---- Smoke, steam, vapour, sparks and clouds ----
-    const smoke = particles(260, 0xd8d4cc);
-    const steam = particles(140, 0xf2f2f2);
+    // ---- Smoke, steam, vapour, water spray, fire, sparks and clouds ----
+    const smoke = particles(320, 0xd8d4cc);
+    const steam = particles(160, 0xf2f2f2);
     const vapour = particles(40, 0xffffff);
-    const puffs = particles(40, 0xffffff);
-    const sparkN = 220, sparkPos = new Float32Array(sparkN * 3), sparkVel = [];
-    for (let i = 0; i < sparkN; i++) sparkVel.push(new T.Vector3());
+    const puffs = particles(60, 0xffffff);
+    const water = particles(90, 0xcfe6ff);
+    const fire = particles(70, 0xffa040, true);
+    const sparkN = 260, sparkPos = new Float32Array(sparkN * 3), sparkVel = [];
+    for (let i = 0; i < sparkN; i++) { sparkVel.push(new T.Vector3()); sparkPos[i * 3 + 1] = -50; }
     const sparkGeo = new T.BufferGeometry();
     sparkGeo.setAttribute("position", new T.BufferAttribute(sparkPos, 3));
-    const sparks = new T.Points(sparkGeo, new T.PointsMaterial({ map: softMap(), color: new T.Color(3, 1.6, 0.5), size: 0.35, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false }));
+    const sparks = new T.Points(sparkGeo, new T.PointsMaterial({ map: softMap(), color: new T.Color(3, 1.6, 0.5), size: 0.35 * S, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false }));
     scene.add(sparks);
     const clouds = new T.Group();
     const cTex = cloudTex();
-    for (let i = 0; i < 46; i++) {
+    for (let i = 0; i < 50; i++) {
       const c = new T.Sprite(new T.SpriteMaterial({ map: cTex, color: 0xffe4d0, transparent: true, opacity: 0.9, depthWrite: false }));
-      c.position.set(-60 + Math.random() * 160, 62 + Math.random() * 18, -70 + Math.random() * 140);
-      c.scale.set(30 + Math.random() * 30, 14 + Math.random() * 10, 1);
+      c.position.set((-60 + Math.random() * 170) * S, (62 + Math.random() * 18) * S, (-70 + Math.random() * 140) * S);
+      c.scale.set((30 + Math.random() * 30) * S, (14 + Math.random() * 10) * S, 1);
       clouds.add(c);
     }
     scene.add(clouds);
 
-    // ---- Flight path (simplified, sped up for the game) ----
+    // ---- Flight path (sped up for the game) ----
     const flight = (t) => {
       const L = Math.max(0, t - 3.2);
       const after = Math.max(0, L - 3.5);
-      return { y: 0.6 + 1.25 * Math.pow(L, 2.2), x: 0.9 * Math.pow(after, 2.4), pitch: Math.min(0.55, after * 0.09) };
+      return { y: baseY + 1.25 * S * Math.pow(L, 2.2), x: 0.9 * S * Math.pow(after, 2.4), pitch: Math.min(0.55, after * 0.09) };
     };
     const place = (obj, f) => { obj.position.set(f.x, f.y, 0); obj.rotation.set(0, 0, -f.pitch); };
+    place(s1, flight(0)); place(s2, flight(0));
+    const v3 = (x, y, z) => new T.Vector3(x, y, z);
+    const sepLocal = (V.sepY[0] || 30);                       // metres, in the stage groups' own units
+    const world = (g, x, y, z) => g.localToWorld(v3(x, y, z));
 
-    // ---- Cinematic overlay: letterbox bars, cut fades, skip button ----
+    // ---- How this mission leaves Earth (simplified real flight plans) ----
+    const J = {
+      "mars-rover": { parking: true, burn: "TRANS-MARS INJECTION", burnShort: "MARS BURN", parkAlt: "between about 165 and 325 km", parkKm: 165,
+        burnMsg: "🔥 Second burn: speeding up to escape Earth's gravity",
+        away: "ON THE WAY TO MARS", awayMsg: "☀️ Free of Earth, the spacecraft now orbits the Sun, on a path that meets Mars",
+        later: "ABOUT 8 MONTHS LATER…", arrive: "🔴 Arriving at Mars: entry, descent and landing!", escape: 41000 },
+      "lunar-lander": { parking: true, burn: "TRANS-LUNAR INJECTION", burnShort: "MOON BURN", parkAlt: "about 185 km", parkKm: 185,
+        burnMsg: "🔥 Third-stage burn: speeding up to leave Earth orbit for the Moon",
+        away: "ON THE WAY TO THE MOON", awayMsg: "🌕 Now coasting on a long loop out to the Moon (the Moon itself orbits Earth)",
+        later: "ABOUT 4 DAYS LATER…", arrive: "🌕 Four days after launch: time to land on the Moon!", escape: 39000 },
+      "deep-space-telescope": { parking: false,
+        away: "ON COURSE TO L2", awayMsg: "🔭 No parking orbit: the rocket sent Webb straight towards L2, 1.5 million km from Earth",
+        later: "ABOUT 2 WEEKS LATER…", arrive: "🔭 Webb unfolded during its month-long trip to L2: time to unfold it!", escape: 36000 },
+    }[mission.id] || { parking: false, away: "ON ITS WAY", awayMsg: "", later: "LATER…", arrive: "", escape: 36000 };
+    const TL = J.parking
+      ? { burn1End: 13.4, orbit: 13.6, burn2: 15.0, burn2End: 16.9, away: 16.8, skip: 18.6, play: 20.2 }
+      : { burn1End: 14.6, orbit: null, burn2: null, burn2End: null, away: 13.8, skip: 15.8, play: 17.4 };
+    const burning = (t) => (t >= 11.3 && t < TL.burn1End) || (TL.burn2 != null && t >= TL.burn2 && t < TL.burn2End);
+    const names = { saturnv: ["S-IC", "S-II"], a401: ["Atlas booster", "Centaur"], a541: ["Atlas booster", "Centaur"], d4h: ["core stage", "upper stage"],
+      ariane5: ["core stage", "upper stage"], medium: ["first stage", "second stage"], superheavy: ["booster", "ship"] }[type] || ["first stage", "second stage"];
+
+    // ---- Cinematic overlay ----
     $f("fBars").classList.add("on");
     const dip = () => {
       const el = $f("fFade");
@@ -500,60 +600,44 @@
     c.querySelector("#fSkipLaunch").addEventListener("click", () => startPlay());
 
     // ---- State ----
-    /* How each real mission left Earth (simplified):
-       • Curiosity: parked in Earth orbit, then the Centaur stage fired again ("trans-Mars injection")
-         to escape Earth. After that it orbited the Sun for about 8 months until it met Mars.
-       • Apollo 11: parked in Earth orbit, then "trans-lunar injection" sent it on a long loop out to
-         the Moon (which itself orbits Earth), arriving about 4 days later.
-       • Webb: no parking orbit; the Ariane 5 sent it straight on a path to L2, reached about a month later. */
-    const J = {
-      "mars-rover": { parking: true, burn: "TRANS-MARS INJECTION", burnShort: "MARS BURN",
-        burnMsg: "🔥 Second burn: speeding up to escape Earth's gravity",
-        away: "ON THE WAY TO MARS", awayMsg: "☀️ Free of Earth, the spacecraft now orbits the Sun, on a path that meets Mars",
-        later: "ABOUT 8 MONTHS LATER…", arrive: "🔴 Arriving at Mars: entry, descent and landing!", escape: 41000 },
-      "lunar-lander": { parking: true, burn: "TRANS-LUNAR INJECTION", burnShort: "MOON BURN",
-        burnMsg: "🔥 Second burn: speeding up to leave Earth orbit for the Moon",
-        away: "ON THE WAY TO THE MOON", awayMsg: "🌕 Now coasting on a long loop out to the Moon (the Moon itself orbits Earth)",
-        later: "ABOUT 4 DAYS LATER…", arrive: "🌕 Arriving at the Moon: time to land!", escape: 39000 },
-      "deep-space-telescope": { parking: false,
-        away: "ON COURSE TO L2", awayMsg: "🔭 No parking orbit: the rocket sent Webb straight towards L2, 1.5 million km from Earth",
-        later: "ABOUT 1 MONTH LATER…", arrive: "🔭 Arriving at L2: time to unfold the telescope!", escape: 36000 },
-    }[mission.id] || { parking: false, away: "ON ITS WAY", awayMsg: "", later: "LATER…", arrive: "", escape: 36000 };
-    // timeline for the second stage (seconds into the launch)
-    const TL = J.parking
-      ? { burn1End: 13.4, orbit: 13.6, burn2: 15.0, burn2End: 16.9, away: 16.8, skip: 18.6, play: 20.2 }
-      : { burn1End: 14.6, orbit: null, burn2: null, burn2End: null, away: 13.8, skip: 15.8, play: 17.4 };
-    const burning = (t) => (t >= 11.3 && t < TL.burn1End) || (TL.burn2 != null && t >= TL.burn2 && t < TL.burn2End);
     const roar = snd.loop("rocket");
     let stage2 = null;
     let lastCount = null, lastShot = -1, shake = 0, bigUntil = 0;
-    let sepDone = false, lowerVel = new T.Vector3(), upperVel = new T.Vector3(), spin = new T.Vector3(), sepDir = new T.Vector3(0, 1, 0);
+    let sepDone = false, boostersOff = false, fairingOff = false;
+    const lowerVel = v3(0, 0, 0), upperVel = v3(0, 0, 0), spin = v3(0, 0, 0), sepDir = v3(0, 1, 0);
+    const loose = [];                 // jettisoned pieces: { obj, vel, spin }
     let earth = null, sunG = null, milky = null;
-    const earthOff = new T.Vector3(30, -548, -80), sunOff = new T.Vector3(), milkyOff = new T.Vector3();
+    const earthOff = v3(60, -1080, -160).multiplyScalar(S), sunOff = v3(0, 0, 0); // camera stays above the glowing atmosphere
     let smokeT = 0, steamT = 0, ventT = 0;
     const done = {};
     const once = (key, t, fn) => { if (!done[key] && stageT >= t) { done[key] = true; fn(); } };
     const say = (txt, secs = 1.4) => { big(txt); bigUntil = stageT + secs; };
     const pad2 = (n) => String(Math.floor(n)).padStart(2, "0");
-    const v3 = (x, y, z) => new T.Vector3(x, y, z);
+    const jettison = (obj, vel, sp) => { scene.attach(obj); loose.push({ obj, vel, spin: sp }); };
 
     function toSpace() {
       site.visible = false;
       clouds.visible = false;
       steam.hide();
+      water.hide();
+      smoke.hide();      // smoke only forms in the lower atmosphere
+      fire.hide();
       sky.visible = false;
       scene.fog = null;
       scene.background = new T.Color(0x000000);
       starPts.material.opacity = 1;
-      const up = upper.position.clone();
-      const sunDir = new T.Vector3(-0.55, 0.2, -0.8).normalize();
+      const up = s2.position.clone();
+      const sunDir = v3(-0.55, 0.2, -0.8).normalize();
       if (window.FX) {
-        earth = FX.planet(520, { sunDir: new T.Vector3(0.6, 0.4, -0.5) });
+        earth = FX.planet(520 * S, { sunDir: v3(0.6, 0.4, -0.5) });
+        // seen up close, so: thinner clouds and a slightly darker surface, like real onboard footage
+        if (earth.userData.clouds) { earth.userData.clouds.material.transparent = true; earth.userData.clouds.material.opacity = 0.55; }
+        earth.userData.surface.material.color.setScalar(0.75);
         earth.position.copy(up).add(earthOff);
-        earth.rotation.set(0.3, 1.2, 0.15);
+        earth.rotation.set(Math.PI / 2 - 0.35, 2.2, 0); // tilt so the rocket flies over oceans and land, not the pole
         scene.add(earth);
-        sunG = FX.sun(sunDir, 60);
-        sunOff.copy(sunDir).multiplyScalar(420);
+        sunG = FX.sun(sunDir, 60 * S);
+        sunOff.copy(sunDir).multiplyScalar(420 * S);
         sunG.position.copy(up).add(sunOff);
         scene.add(sunG);
         milky = new T.Mesh(new T.SphereGeometry(1400, 48, 24), new T.MeshBasicMaterial({ map: FX.tex(FX.milkyWayCanvas()), side: T.BackSide, depthWrite: false, fog: false }));
@@ -573,38 +657,66 @@
         const count = t < 3 ? 3 - Math.floor(t) : null;
         if (count !== lastCount) { lastCount = count; if (count) { snd.play("countdown"); say(String(count), 0.9); } }
         once("go", 0.6, () => { msg("✅ All systems are GO for launch", 2200); snd.play("go"); });
-        once("ign", 2.6, () => { msg("🔥 Main engine start: water floods the pad to soak up the sound", 2600); snd.play("ignition"); shake = 0.6; });
+        once("ign", 2.6, () => {
+          msg(type === "saturnv" ? "🔥 Ignition: five F-1 engines start, then hold-down arms keep the rocket still until full thrust"
+            : "🔥 Main engine start: water floods the pad to soak up the sound", 2800);
+          snd.play("ignition"); shake = 0.6;
+        });
         once("lift", 3.2, () => { say("LIFTOFF!", 1.6); snd.play("release"); });
         once("clear", 5.0, () => msg("🗼 The rocket has cleared the tower", 2200));
-        once("maxq", 7.4, () => msg("💨 Max-Q: the moment of greatest air pressure on the rocket", 2800));
-        once("meco", 10.1, () => { msg("First stage engine cut-off", 1500); });
-        once("sep", 10.6, () => {
+        once("maxq", 7.0, () => msg("💨 Max-Q: the moment of greatest air pressure on the rocket", 2800));
+        if (V.boosters.length) once("bsep", 8.3, () => {
+          say(V.boosters[0].userData.exhaust === "solid" ? "BOOSTER SEPARATION" : "SIDE CORES SEPARATE", 1.3);
+          snd.play("separation");
+          boostersOff = true;
+          V.boosters.forEach((b, i) => {
+            const out = world(b, 0, 0, 0).sub(world(s1, 0, 0, 0)).setY(0).normalize();
+            jettison(b, out.multiplyScalar(3 * S).add(v3(0, 4 * S, 0)), v3(0.3, 0, (i % 2 ? -1 : 1) * 0.5));
+          });
+        });
+        once("meco", 10.1, () => msg(`${names[0][0].toUpperCase() + names[0].slice(1)} engine cut-off`, 1500));
+        once("sep", 10.5, () => {
           sepDone = true;
           say("STAGE SEPARATION", 1.5);
           snd.play("separation");
-          // from here on, motion is shown slowed down so you can watch the stages part
           const f0 = flight(t - 0.02), f1 = flight(t);
           sepDir.set(f1.x - f0.x, f1.y - f0.y, 0).normalize();
-          upperVel.copy(sepDir).multiplyScalar(6);
-          lowerVel.copy(sepDir).multiplyScalar(5.2);
+          upperVel.copy(sepDir).multiplyScalar(6 * S);
+          lowerVel.copy(sepDir).multiplyScalar(5.2 * S);
           spin.set(0.25 + Math.random() * 0.2, 0.3, 0.55);
-          upperBell.visible = true;
-          const p = upper.localToWorld(v3(0, sepY, 0));
-          for (let i = 0; i < 26; i++) {
-            const a = (i / 26) * Math.PI * 2;
-            puffs.spawn(p, v3(Math.cos(a) * 6, (Math.random() - 0.5) * 2, Math.sin(a) * 6), { life: 1.6, drag: 1.4, s0: 0.6, s1: 3.2, a0: 0.8 });
+          const p = world(s2, 0, sepLocal, 0);
+          for (let i = 0; i < 30; i++) {
+            const a = (i / 30) * Math.PI * 2;
+            puffs.spawn(p, v3(Math.cos(a) * 6 * S, (Math.random() - 0.5) * 2, Math.sin(a) * 6 * S), { life: 1.4, drag: 1.4, s0: 0.3 * S, s1: 1.6 * S, a0: 0.6 });
           }
         });
-        once("s2", 11.3, () => { msg("🔵 Second stage ignition", 2200); snd.play("stage2"); stage2 = snd.loop("thruster"); });
+        once("s2", 11.3, () => { msg(`🔵 ${names[1][0].toUpperCase() + names[1].slice(1)} ignition`, 2200); snd.play("stage2"); stage2 = snd.loop("thruster"); });
+        once("fairing", 12.2, () => {
+          if (V.les) {                          // Apollo: the launch escape tower is no longer needed
+            say("ESCAPE TOWER JETTISON", 1.4);
+            snd.play("release");
+            jettison(V.les, sepDir.clone().multiplyScalar(14 * S), v3(0.2, 0, 0.4));
+          } else if (V.fairing) {
+            say("FAIRING SEPARATION", 1.4);
+            snd.play("separation");
+            msg("🛰 The nose cone splits open: there's your spacecraft!", 2600);
+            fairingOff = true;
+            if (V.payload) V.payload.visible = true;
+            [V.fairing.left, V.fairing.right].forEach((h) => {
+              const side = h.userData.dir;
+              const out = v3(0, 0, side).applyQuaternion(s2.quaternion);
+              jettison(h, out.multiplyScalar(4 * S).add(sepDir.clone().multiplyScalar(4 * S)), v3(side * 0.9, 0, 0));
+            });
+          }
+        });
         if (TL.orbit != null) {
-          once("seco", TL.burn1End, () => msg("Second stage engine cut-off", 1200));
+          once("seco", TL.burn1End, () => msg(`${names[1][0].toUpperCase() + names[1].slice(1)} engine cut-off`, 1200));
           once("orbit", TL.orbit, () => { say("EARTH ORBIT", 1.6); snd.play("orbit");
-            msg("🛰 A \"parking orbit\" around Earth, about 185 km up. Not fast enough to leave Earth yet!", 2800); });
+            msg(`🛰 A "parking orbit" around Earth, ${J.parkAlt} up. Not fast enough to leave Earth yet!`, 2800); });
           once("burn2", TL.burn2, () => { say(J.burn, 1.6); snd.play("stage2"); msg(J.burnMsg, 2200); });
         }
         once("away", TL.away, () => { say(J.away, 1.8); snd.play("orbit"); if (J.awayMsg) msg(J.awayMsg, 3200); });
         once("skip", TL.skip, () => {
-          // time skip: fade to black for the long cruise
           const el = $f("fFade");
           el.style.transition = "opacity 0.8s ease-in";
           el.style.opacity = "1";
@@ -616,80 +728,112 @@
 
         // ---------- rocket motion ----------
         const f = flight(t);
-        if (!sepDone) { place(upper, f); place(lower, f); }
+        if (!sepDone) { place(s1, f); place(s2, f); }
         else {
-          if (burning(t)) upperVel.addScaledVector(sepDir, 7 * dt); // second stage pushes ahead while its engine burns
-          upper.position.addScaledVector(upperVel, dt);
-          lowerVel.addScaledVector(sepDir, -2.2 * dt);              // spent first stage falls behind
-          lower.position.addScaledVector(lowerVel, dt);
-          lower.rotation.x += spin.x * dt;
-          lower.rotation.z += spin.z * dt;
+          if (burning(t)) upperVel.addScaledVector(sepDir, 7 * S * dt);
+          s2.position.addScaledVector(upperVel, dt);
+          lowerVel.addScaledVector(sepDir, -2.2 * S * dt);
+          s1.position.addScaledVector(lowerVel, dt);
+          s1.rotation.x += spin.x * dt;
+          s1.rotation.z += spin.z * dt;
         }
-        cutPlanes();
+        loose.forEach((l) => {
+          l.vel.y -= (earth ? 0 : 6 * S) * dt;
+          l.obj.position.addScaledVector(l.vel, dt);
+          l.obj.rotation.x += l.spin.x * dt;
+          l.obj.rotation.z += l.spin.z * dt;
+        });
         const L = Math.max(0, t - 3.2);
-        const alt = sepDone ? 200 : f.y;
-        const thin = Math.min(1, alt / 110);
-        if (earth) {                       // Earth, Sun and stars stay put around the rocket
-          earth.position.copy(upper.position).add(earthOff);
+        const alt = sepDone ? 200 * S : f.y;
+        const thin = Math.min(1, alt / (110 * S));
+        if (earth) {
+          earth.position.copy(s2.position).add(earthOff);
           earth.rotation.y += dt * 0.012;
-          if (t > TL.away) earthOff.add(v3(0, -45 * dt, 25 * dt)); // Earth shrinks away behind us
-          sunG.position.copy(upper.position).add(sunOff);
-          milky.position.copy(upper.position);
-        }       // how thin the air is (0 = ground, 1 = space)
-        plume1.userData.update(t, sepDone ? 0 : t < 2.6 ? 0 : Math.min(1, (t - 2.6) * 2.5), thin);
+          if (t > TL.away) earthOff.add(v3(0, -45 * S * dt, 25 * S * dt));
+          sunG.position.copy(s2.position).add(sunOff);
+          milky.position.copy(s2.position);
+        }
+        const k1 = sepDone ? 0 : t < 2.6 ? 0 : Math.min(1, (t - 2.6) * 2.5);
+        plume1.userData.update(t, k1, thin);
+        boosterPlumes.forEach((p) => p.userData.update(t, boostersOff ? 0 : k1, thin));
         plume2.userData.update(t, burning(t) ? Math.min(1, (t - (t >= (TL.burn2 || 99) ? TL.burn2 : 11.3)) * 2) : 0, 1);
+        hotBells.forEach((m) => m.emissive.setRGB(k1 * 0.5, k1 * 0.16, 0));
         roar.set(t < 2.6 ? 0 : sepDone ? 0 : Math.min(1, (t - 2.6) * 2) * Math.max(0.25, 1 - Math.max(0, t - 4) / 7));
         if (stage2) stage2.set(burning(t) ? 0.55 : 0);
 
-        // tower arms swing away at liftoff, the beacon blinks
+        // Max-Q vapour cone wraps the rocket for a moment
+        const vq = Math.max(0, 1 - Math.abs(t - 7.3) / 0.7);
+        cone.visible = vq > 0.01 && !sepDone;
+        if (cone.visible) {
+          cone.position.copy(world(s2, 0, V.height * 0.55, 0));
+          cone.quaternion.copy(s2.quaternion);
+          cone.scale.set(RW * 2.4, H * 0.18, RW * 2.4);
+          cone.material.uniforms.opacity.value = vq * (0.75 + Math.random() * 0.25);
+        }
+
+        // tower arms swing away, the beacon blinks
         const armK = Math.min(1, Math.max(0, (t - 3.0) / 1.3));
         arms.forEach((a, i) => (a.rotation.y = -armK * (1.3 + i * 0.1)));
         beacon.material.color.setRGB(Math.sin(t * 6) > 0 ? 3 : 0.3, 0.15, 0.1);
 
-        // engine light on the pad and smoke
-        const nozzle = lower.localToWorld(v3(0, baseY, 0));
-        glow.position.copy(nozzle).add(v3(0, -1.5, 0));
-        glow.intensity = !sepDone && t > 2.6 ? (4 + Math.random() * 2) * Math.max(0.1, 1 - L / 6) : 0;
+        const nozzle = world(s1, 0, s1.userData.nozzleY, 0);
+        glow.position.copy(nozzle).add(v3(0, -1.5 * S, 0));
+        glow.intensity = !sepDone && t > 2.6 ? (3 + Math.random() * 1.5) * Math.max(0.1, 1 - L / 6) : 0;
 
         // ---------- particles ----------
         ventT -= dt;
-        if (t < 3.2 && ventT <= 0) {         // vapour venting from the cold fuel tanks
-          ventT = 0.09;
+        if (t < 3.2 && ventT <= 0) {           // white vapour boiling off the super-cold propellants
+          ventT = 0.08;
           const side = Math.random() < 0.5 ? -1 : 1;
-          const p = lower.localToWorld(v3(side * radius * 1.05, baseY + (topY - baseY) * (0.25 + Math.random() * 0.45), (Math.random() - 0.5) * radius));
-          vapour.spawn(p, v3(side * (0.6 + Math.random()), -0.8 - Math.random() * 0.6, 0), { life: 2.4, drag: 0.4, rise: -0.2, s0: 0.5, s1: 2.6, a0: 0.35 });
+          const p = world(s2, side * V.radius * (V.boosters.length ? 0.55 : 1.02), sepLocal * (0.3 + Math.random() * 0.9), (Math.random() - 0.5) * V.radius);
+          vapour.spawn(p, v3(side * (0.6 + Math.random()) * S, -0.8 * S - Math.random() * 0.6, 0), { life: 2.4, drag: 0.4, rise: -0.2, s0: 0.5 * S, s1: 2.6 * S, a0: 0.35 });
         }
+        if (t > 2.3 && t < 3.6) {              // sound-suppression water sprays onto the pad
+          for (let i = 0; i < 2; i++) {
+            const a = Math.random() * Math.PI * 2;
+            water.spawn(v3(Math.cos(a) * padR * 0.9, 0.8, Math.sin(a) * padR * 0.9), v3(-Math.cos(a) * 6 * S, 5 * S, -Math.sin(a) * 6 * S),
+              { life: 1.2, drag: 0.6, rise: -9 * S, s0: 0.6 * S, s1: 1.8 * S, a0: 0.6 });
+          }
+        }
+        if (type === "d4h" && t > 2.6 && t < 4.4) {   // Delta IV's famous fireball: leftover hydrogen burns up the sides
+          for (let i = 0; i < 2; i++) {
+            const p = world(s1, (Math.random() - 0.5) * 6, Math.random() * 6, (Math.random() - 0.5) * 6);
+            fire.spawn(p, v3((Math.random() - 0.5) * 2, 3 + Math.random() * 3, (Math.random() - 0.5) * 2).multiplyScalar(S),
+              { life: 1.4, drag: 0.5, rise: 2 * S, s0: 1.2 * S, s1: 5 * S, a0: 0.7, c0: 0xffc070, c1: 0x902010 });
+          }
+        }
+        fire.update(dt);
+        water.update(dt);
         steamT -= dt;
-        if (t > 2.6 && t < 7.5 && steamT <= 0) {   // water-deluge steam blasting out of both ends of the flame trench
-          steamT = 0.03;
-          [-1, 1].forEach((dir) => steam.spawn(v3((Math.random() - 0.5) * 2, 0.9, dir * 6),
-            v3((Math.random() - 0.5) * 5, 2 + Math.random() * 3, dir * (10 + Math.random() * 8)),
-            { life: 4.5, drag: 0.55, rise: 0.6, s0: 3, s1: 15, a0: 0.85, c0: 0xffc89a, c1: 0xe8e8ea }));
+        if (t > 2.6 && t < 7.5 && steamT <= 0) {
+          steamT = 0.025;
+          [-1, 1].forEach((dir) => steam.spawn(v3((Math.random() - 0.5) * RW * 2, 0.9, dir * padR * 1.05),
+            v3((Math.random() - 0.5) * 5 * S, (2 + Math.random() * 3) * S, dir * (10 + Math.random() * 8) * S),
+            { life: 4.5, drag: 0.55, rise: 0.6 * S, s0: 3 * S, s1: 16 * S, a0: 0.85, c0: 0xffc89a, c1: 0xe8e8ea }));
         }
         smokeT -= dt;
-        if (t > 3.2 && !sepDone && smokeT <= 0) {  // exhaust smoke column left in the sky
-          smokeT = 0.028;
-          const low = alt < 8;
-          smoke.spawn(nozzle.clone().add(v3((Math.random() - 0.5) * 0.8, -1.8 * S, (Math.random() - 0.5) * 0.8)),
-            low ? v3((Math.random() - 0.5) * 14, Math.random() * 2, (Math.random() - 0.5) * 14) : v3((Math.random() - 0.5) * 1.5, -2 - Math.random() * 2, (Math.random() - 0.5) * 1.5),
-            { life: low ? 4 : 7, drag: 0.6, rise: 0.15, s0: low ? 3 : 2.4, s1: low ? 14 : 10 + thin * 10, a0: 0.75 * (1 - thin * 0.6), c0: 0xffb070, c1: 0xcfcac2 });
+        const smokeK = Math.max((EXHAUST[s1.userData.exhaust] || {}).smoke || 0.7, boostersOff ? 0 : V.boosters.length ? EXHAUST[V.boosters[0].userData.exhaust].smoke : 0);
+        if (t > 3.2 && !sepDone && !earth && smokeT <= 0) {
+          smokeT = 0.024;
+          const low = alt < baseY + 8 * S;
+          const src = V.boosters.length && !boostersOff ? world(V.boosters[Math.floor(Math.random() * V.boosters.length)], 0, -3, 0) : nozzle;
+          smoke.spawn(src.clone().add(v3((Math.random() - 0.5) * RW, -2 * S, (Math.random() - 0.5) * RW)),
+            low ? v3((Math.random() - 0.5) * 14 * S, Math.random() * 2, (Math.random() - 0.5) * 14 * S) : v3((Math.random() - 0.5) * 1.5 * S, -2 * S - Math.random() * 2, (Math.random() - 0.5) * 1.5 * S),
+            { life: low ? 4 : 7, drag: 0.6, rise: 0.15, s0: (low ? 3 : 2.4) * S * (0.6 + smokeK * 0.5), s1: (low ? 14 : 10 + thin * 10) * S * (0.6 + smokeK * 0.5),
+              a0: 0.8 * smokeK * (1 - thin * 0.6), c0: 0xffb070, c1: 0xcfcac2 });
         }
-        smoke.update(dt);
-        steam.update(dt);
-        vapour.update(dt);
-        puffs.update(dt);
+        smoke.update(dt); steam.update(dt); vapour.update(dt); puffs.update(dt);
 
-        // sparks thrown off at ignition
         if (t > 2.6 && t < 3.6) {
-          for (let i = 0; i < 6; i++) {
+          for (let i = 0; i < 7; i++) {
             const j = Math.floor(Math.random() * sparkN);
-            sparkPos.set([nozzle.x + (Math.random() - 0.5) * 2, Math.max(0.7, nozzle.y - 1), nozzle.z + (Math.random() - 0.5) * 2], j * 3);
+            sparkPos.set([nozzle.x + (Math.random() - 0.5) * 2 * S, Math.max(0.7, nozzle.y - S), nozzle.z + (Math.random() - 0.5) * 2 * S], j * 3);
             const a = Math.random() * Math.PI * 2;
-            sparkVel[j].set(Math.cos(a) * (5 + Math.random() * 9), 3 + Math.random() * 7, Math.sin(a) * (5 + Math.random() * 9));
+            sparkVel[j].set(Math.cos(a) * (5 + Math.random() * 9) * S, (3 + Math.random() * 7) * S, Math.sin(a) * (5 + Math.random() * 9) * S);
           }
         }
         for (let i = 0; i < sparkN; i++) {
-          sparkVel[i].y -= 14 * dt;
+          sparkVel[i].y -= 14 * S * dt;
           sparkPos[i * 3] += sparkVel[i].x * dt;
           sparkPos[i * 3 + 1] = Math.max(0.65, sparkPos[i * 3 + 1] + sparkVel[i].y * dt);
           sparkPos[i * 3 + 2] += sparkVel[i].z * dt;
@@ -697,61 +841,71 @@
         sparkGeo.attributes.position.needsUpdate = true;
         sparks.material.opacity = t > 2.6 && t < 5 ? 1 - Math.max(0, t - 3.8) / 1.2 : 0;
 
-        // ---------- sky: dusk → dark blue → black space ----------
-        const k = Math.min(1, Math.max(0, (alt - 15) / 100));
-        if (scene.background && scene.background.isColor && !earth) scene.background.setRGB(0.05 * (1 - k), 0.1 * (1 - k), 0.22 * (1 - k));
-        sky.material.opacity = 1 - k;
-        if (scene.fog) { scene.fog.color.setRGB(0.23 * (1 - k), 0.21 * (1 - k), 0.31 * (1 - k)); scene.fog.far = 480 + k * 900; }
-        if (!earth) starPts.material.opacity = 0.25 + k * 0.75;
+        // ---------- sky: dusk → black space ----------
+        const kSky = Math.min(1, Math.max(0, (alt - 15 * S) / (100 * S)));
+        if (scene.background && scene.background.isColor && !earth) scene.background.setRGB(0.05 * (1 - kSky), 0.1 * (1 - kSky), 0.22 * (1 - kSky));
+        sky.material.opacity = 1 - kSky;
+        if (scene.fog) { scene.fog.color.setRGB(0.23 * (1 - kSky), 0.21 * (1 - kSky), 0.31 * (1 - kSky)); scene.fog.far = 520 + kSky * 900; }
+        if (!earth) starPts.material.opacity = 0.25 + kSky * 0.75;
 
-        // ---------- camera direction: four shots ----------
-        const shot = t < 3.2 ? 0 : t < 6.2 ? 1 : t < 10.5 ? 2 : 3;
+        // ---------- camera direction: six shots ----------
+        const shot = t < 2.4 ? 0 : t < 3.4 ? 1 : t < 5.8 ? 2 : t < 9.0 ? 3 : t < 11.0 ? 4 : 5;
         if (shot !== lastShot) {
           if (lastShot >= 0) dip();
           lastShot = shot;
-          if (shot === 3) toSpace();
-          if (shot === 2) { const p = upper.position; camera.position.set(p.x + 26, p.y - 4, p.z + 30); }
+          camera.up.set(0, 1, 0);
+          if (shot === 4) toSpace();
+          if (shot === 3) { const p = s2.position; camera.position.set(p.x + 24 * S, p.y - 3 * S, p.z + 28 * S); }
         }
-        const up = upper.position;
+        const up = s2.position;
         let look;
         if (shot === 0) {            // slow orbit around the pad at dusk
           const a = 0.9 + t * 0.09;
-          camera.position.set(Math.sin(a) * 30, 5 + t * 0.6, Math.cos(a) * 30);
-          look = v3(0, 8.5, 0);
+          camera.position.set(Math.sin(a) * 34 * S, 5 * S + t * 0.6 * S, Math.cos(a) * 34 * S);
+          look = v3(0, H * 0.55, 0);
           camera.fov = 40;
-        } else if (shot === 1) {     // low ground camera: the rocket thunders up past us
-          camera.position.set(9.5, 1.1, 11.5);
-          look = v3(up.x, Math.max(6, up.y + 6), 0);
-          camera.fov = 52 - (t - 3.2) * 3;
-        } else if (shot === 2) {     // long-lens tracking shot, through the clouds
-          camera.position.lerp(v3(up.x + 24, up.y - 3, up.z + 28), 0.06);
-          look = v3(up.x, up.y + 5, up.z);
+        } else if (shot === 1) {     // close-up of the engines as they light
+          camera.position.set(RW * 3.4 + 5 * S, baseY * 0.35 + 0.3, RW * 3 + 9 * S);
+          look = v3(0, baseY + H * 0.12, 0);
+          camera.fov = 40;
+        } else if (shot === 2) {     // camera on the tower, looking up as the rocket roars past
+          camera.position.set(towerX + w * 2.2, TH * 0.32, 3.2 * S);
+          look = world(s1, 0, V.height * 0.32, 0);
+          camera.fov = 62;
+        } else if (shot === 3) {     // long-lens tracking shot, through the clouds
+          camera.position.lerp(v3(up.x + 24 * S, up.y - 3 * S, up.z + 28 * S), 0.06);
+          look = v3(up.x, up.y + H * 0.4, up.z);
           camera.fov = 32;
-        } else {                     // in space: orbit the second stage, first stage tumbling away
-          const a = 0.7 + (t - 10.5) * 0.14;
-          camera.position.set(up.x + Math.sin(a) * 24, up.y + 5, up.z + Math.cos(a) * 24);
-          look = upper.localToWorld(v3(0, sepY, 0));
+        } else if (shot === 4) {     // onboard camera on the upper stage, looking down the rocket
+          const sc = V.height / 56;           // camera offsets grow with the rocket's size
+          camera.position.copy(world(s2, V.radius + 2.5 * sc, sepLocal + 22 * sc, 0.6 * sc));
+          look = world(s2, V.radius + 24 * sc, sepLocal - 60 * sc, 0);       // down the side of the rocket, out to Earth's horizon
+          camera.up.copy(v3(1, 0, 0).applyQuaternion(s2.quaternion));
+          camera.fov = 72;
+        } else {                     // space chase shot
+          const a = 0.7 + (t - 11) * 0.14;
+          camera.position.set(up.x + Math.sin(a) * 34 * S, up.y + H * 0.75, up.z + Math.cos(a) * 34 * S);
+          look = world(s2, 0, (V.fairing ? V.fairing.y : sepLocal + 20), 0);
           camera.fov = 44;
         }
         camera.updateProjectionMatrix();
         camera.lookAt(look);
 
-        // camera shake: strongest at ignition and when the rocket roars past
         const roarK = !sepDone && t > 2.6 ? Math.max(0, 1 - L / 8) : 0;
-        shake = Math.max(shake * Math.pow(0.1, dt), shot === 1 ? 0.22 * roarK : shot === 0 ? 0.06 * roarK : shot === 2 ? 0.05 * roarK : 0);
+        shake = Math.max(shake * Math.pow(0.1, dt), shot === 2 ? 0.25 * S * roarK : shot === 1 ? 0.15 * S * roarK : shot <= 3 ? 0.05 * S * roarK : shot === 4 ? 0.02 * S : 0);
         if (shake > 0.002) camera.position.add(v3((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake));
 
         // ---------- mission readouts ----------
-        let altKm = Math.max(0, (alt - 0.6) * 0.6);
+        let altKm = Math.max(0, (f.y - baseY) / S * 0.6);
         let speed = 0;
         if (t > 3.2) speed = Math.min(7750, 2.75 * Math.pow(L, 1.2) * 260);
         if (t > 10.5) {
           if (J.parking) {
-            altKm = Math.min(185, 59 + (t - 10.5) * 44);
-            speed = 7750 + Math.min(1, (t - 10.5) / 2.9) * 20250;                       // ~28,000 km/h: orbital speed
-            if (t > TL.burn2) {                                                          // second burn: escape speed
+            altKm = Math.min(J.parkKm, 59 + (t - 10.5) * 44);
+            speed = 7750 + Math.min(1, (t - 10.5) / 2.9) * 20250;
+            if (t > TL.burn2) {
               speed = 28000 + Math.min(1, (t - TL.burn2) / (TL.burn2End - TL.burn2)) * (J.escape - 28000);
-              altKm = 185 + (t - TL.burn2) * 260;
+              altKm = J.parkKm + (t - TL.burn2) * 260;
             }
           } else {
             altKm = 59 + (t - 10.5) * 70;
@@ -762,14 +916,14 @@
           { label: "MISSION TIME", value: t < 3.2 ? `T−00:0${Math.ceil(3.2 - t)}` : `T+00:${pad2(L)}` },
           { label: "ALTITUDE", value: `${altKm.toFixed(altKm < 10 ? 1 : 0)} km` },
           { label: "SPEED", value: `${Math.round(speed).toLocaleString("en-US")} km/h` },
-          { label: "STAGE", value: !sepDone ? "1 · BOOST" : t < 11.3 ? "COAST"
+          { label: "STAGE", value: !sepDone ? (V.boosters.length && !boostersOff ? "1 · BOOST + BOOSTERS" : "1 · BOOST") : t < 11.3 ? "COAST"
               : t < TL.burn1End ? (J.parking ? "2 · ORBIT BURN" : "2 · BURN TO L2")
               : TL.burn2 != null && t < TL.burn2 ? "PARKING ORBIT"
               : TL.burn2End != null && t < TL.burn2End ? "2 · " + J.burnShort
               : J.parking && mission.id === "mars-rover" ? "ORBITING THE SUN" : "COASTING", color: sepDone ? "#93c5fd" : "#fdba74" },
         ]);
 
-        if (t > TL.play) startPlay();
+        if (t > TL.play) { camera.up.set(0, 1, 0); startPlay(); }
       },
     };
   }
@@ -828,11 +982,11 @@
 
     // Fuel comes from YOUR design's Δv (more margin = more fuel time)
     const dv = Engine.current().find((c) => c.id === "dv").value;
-    const fuelMax = 22 + Math.min(Math.max((dv - 2100) / 4, 0), 20);
+    const fuelMax = (22 + Math.min(Math.max((dv - 2100) / 4, 0), 20)) * LV.fuelMul;
     const s = { x: 28, y: 110, vx: 0, vy: -9, fuel: fuelMax, done: false };
 
     setHeader("STAGE 2 · POWERED DESCENT", "Land your lander!",
-      `Hold <b>THRUST</b> (Space / ↑) to slow down. Use <b>◀ ▶</b> to reach the <span class="text-emerald-300">green circle</span>. Touch down slower than <b>4 m/s</b>.<br><span class="text-slate-400">Your design's Δv (${dv} m/s) gives you ${fuelMax.toFixed(0)} seconds of fuel.</span>`);
+      `Hold <b>THRUST</b> (Space / ↑) to slow down. Use <b>◀ ▶</b> to reach the <span class="text-emerald-300">green circle</span>. Touch down slower than <b>${LV.landSpeed} m/s</b>.<br><span class="text-slate-400">Your design's Δv (${dv} m/s) gives you ${fuelMax.toFixed(0)} seconds of fuel.</span>`);
     controlButtons([{ key: "left", label: "◀" }, { key: "up", label: "THRUST" }, { key: "right", label: "▶" }]);
     msg("Tip: don't brake too early. Hovering wastes fuel, just like for Apollo 11!", 5000);
 
@@ -872,7 +1026,7 @@
         const dist = Math.abs(s.x);
         stats([
           { label: "ALTITUDE", value: `${Math.max(0, s.y).toFixed(0)} m` },
-          { label: "DESCENT SPEED", value: `${(-s.vy).toFixed(1)} m/s`, color: -s.vy > 4 ? "#fb7185" : "#6ee7b7" },
+          { label: "DESCENT SPEED", value: `${(-s.vy).toFixed(1)} m/s`, color: -s.vy > LV.landSpeed ? "#fb7185" : "#6ee7b7" },
           { label: "SIDEWAYS SPEED", value: `${Math.abs(s.vx).toFixed(1)} m/s`, color: Math.abs(s.vx) > 3 ? "#fb7185" : "#6ee7b7" },
           { label: "TARGET", value: dist < 6 ? "ABOVE TARGET ✓" : `${dist.toFixed(0)} m ${s.x > 0 ? "◀" : "▶"}`, color: dist < 6 ? "#6ee7b7" : "#fbbf24" },
           { label: `FUEL ${s.fuel.toFixed(0)} s`, bar: (s.fuel / fuelMax) * 100, color: s.fuel / fuelMax < 0.2 ? "#f43f5e" : "#22d3ee" },
@@ -884,15 +1038,15 @@
           fl.visible = false;
           const speed = -s.vy;
           const side = Math.abs(s.vx);
-          const soft = speed <= 4 && side <= 3;
+          const soft = speed <= LV.landSpeed && side <= 3;
           const onTarget = dist < 6;
           engine.set(0);
           snd.play(soft ? "touchdown" : "crash");
           if (!soft) {
             lander.rotation.z = 0.5;
             endPanel(false, "💥 Crash landing!",
-              speed > 4
-                ? `You hit the surface at <b>${speed.toFixed(1)} m/s</b>. Brake earlier and touch down below 4 m/s.`
+              speed > LV.landSpeed
+                ? `You hit the surface at <b>${speed.toFixed(1)} m/s</b>. Brake earlier and touch down below ${LV.landSpeed} m/s.`
                 : `You came down gently, but you were sliding sideways at <b>${side.toFixed(1)} m/s</b>, so the lander tipped over. Stop moving sideways (below 3 m/s) before touchdown.`, startLander);
           } else {
             endPanel(true, onTarget ? "🌕 The Eagle has landed!" : "Safe landing!",
@@ -972,7 +1126,7 @@
         s.yaw += turn * 1.8 * dt;
         s.x += Math.cos(s.yaw) * fwd * 6 * dt;
         s.z -= Math.sin(s.yaw) * fwd * 6 * dt;
-        s.energy += (fwd ? -12 : 0) * dt + charge(stormOn) * dt;
+        s.energy += (fwd ? -12 * LV.roverDrain : 0) * dt + charge(stormOn) * dt;
         s.energy = Math.min(100, Math.max(0, s.energy));
         motors.set(Math.abs(fwd), canDrive ? Math.abs(turn) : 0);
         wind.set(stormOn ? 1 : 0.3);
@@ -1006,7 +1160,7 @@
             s.storm = 30;
             setTimeout(() => snd.play("stormAlarm"), 5600);
             setTimeout(() => msg(solar
-              ? "🌪️ DUST STORM! Your solar panels now make only 30% power. Drive carefully!"
+              ? "🌪️ DUST STORM! Your solar panels now make only 30% power in this game (giant real storms can cut it to a few percent). Drive carefully!"
               : "🌪️ DUST STORM! Your nuclear generator keeps making power. Dust can't block it!", 6000), 5600);
           }
           if (s.idx === 3) {
@@ -1068,6 +1222,11 @@
     const c = $f("fControls");
     c.innerHTML = shuffled.map((s) => `<button data-step="${s.id}" class="finale-btn text-xs sm:text-sm">${s.label}</button>`).join("");
     c.className = "absolute bottom-4 inset-x-0 flex flex-wrap justify-center gap-2 px-3";
+    const markNext = () => {
+      if (!LV.telescopeHint) return;
+      c.querySelectorAll("[data-step]").forEach((b) => b.classList.toggle("next-hint", !!steps[next] && b.dataset.step === steps[next].id));
+    };
+    setTimeout(markNext, 50);
     c.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => {
       if (anim || done) return;
       const id = b.dataset.step;
@@ -1078,6 +1237,7 @@
         msg(`✓ ${steps[next].label}…`, 1800);
         snd.play("deploy");
         next += 1;
+        markNext();
       } else {
         mistakes += 1;
         snd.play("wrong");
@@ -1156,7 +1316,7 @@
     requestAnimationFrame(loop);
     const dt = Math.min((t - lastT) / 1000 || 0, 0.05);
     lastT = t;
-    if (play) play.update(dt);
+    if (play && !frozen) play.update(dt);
     if (fx) {
       fx.composer.passes[0].scene = scene; // each stage builds a new scene
       fx.render(t / 1000);
@@ -1220,6 +1380,8 @@
 
   window.Finale3D = {
     start,
+    /* Testing helper: freeze the action (screenshots of a single moment) */
+    debugFreeze: (on) => (frozen = !!on),
     /* Testing helper: advance the game by n frames (works even when the tab is in the background) */
     debugStep(n = 1, dt = 1 / 30, input = {}) {
       Object.assign(keys, input);

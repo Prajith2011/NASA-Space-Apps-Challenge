@@ -143,10 +143,12 @@
     return once("earth", () => sphereCanvas(1024, 512, (x, y, z, lat) => {
       const c = fbm(x * 1.6 + 4, y * 1.6, z * 1.6, 6, 21);
       const al = Math.abs(lat);
-      if (al > 1.22 || (al > 1.08 && fbm(x * 6, y * 6, z * 6, 3, 5) > 0.5)) return [235, 242, 250];
+      // polar ice with a ragged, soft edge
+      const ice = smooth(1.1, 1.24, al + (fbm(x * 6, y * 6, z * 6, 3, 5) - 0.5) * 0.18);
+      if (ice > 0.98) return [235, 242, 250];
       if (c < 0.52) {
         const d = smooth(0.38, 0.52, c);
-        return [8 + 22 * d, 32 + 60 * d, 78 + 80 * d];
+        return [8 + 22 * d, 32 + 60 * d, 78 + 80 * d].map((v, i) => v * (1 - ice) + [225, 235, 245][i] * ice);
       }
       const m = fbm(x * 5 + 3, y * 5, z * 5, 4, 9);
       const hgt = fbm(x * 12, y * 12, z * 12, 3, 13);
@@ -156,7 +158,7 @@
       else if (m > 0.55) col = [44, 86, 40];                              // forest
       else col = [96, 128, 62];                                           // grassland
       const k = 0.8 + hgt * 0.45;
-      return col.map((v) => Math.min(255, v * k));
+      return col.map((v, i) => Math.min(255, v * k * (1 - ice) + [235, 242, 250][i] * ice));
     }));
   }
   function cloudCanvas() {

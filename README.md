@@ -16,7 +16,29 @@ trade-off game to fix it.
 **Easiest:** double-click `index.html`. It opens in your web browser.
 (You need internet, because the 3D engine, styling and fonts load from the web.)
 
-## The Spacecraft Hangar (home page)
+## Levels
+
+The site starts by asking **"Which level would you like to try out?"** (`index.html`). Each level has its own page,
+built from one template so they stay identical apart from the level:
+
+| | 🌱 Beginner (`beginner.html`) | 🚀 Intermediate (`intermediate.html`) | 🧑‍🚀 Advanced (`advanced.html`) |
+|---|---|---|---|
+| Words | simple words for every part + word helper | real terms + word helper | full technical language |
+| Dangers per scan | exactly 5, slower | 5–7 | 7–9, fast, severity hidden until opened |
+| Risks shown per part | top 2 | all | all |
+| Workshop | Easy mode always on, unlimited hints | Easy mode on (optional) | Easy mode off, numbers open, 1 hint |
+| Moon landing | ≤ 5 m/s, +35% fuel | ≤ 4 m/s | ≤ 3 m/s, −10% fuel |
+| Mars rover battery | drains slower | normal | drains faster |
+
+To change the pages, edit `tools/app-template.html` and run `node tools/build-pages.js`.
+
+## Accuracy
+
+All spacecraft facts, dates, numbers and "(real)" events were fact-checked against NASA, JPL, ESA and other
+sources. Component masses, costs and power numbers in the puzzle, and the diagnostic sensor readings, are
+simplified or simulated for gameplay (the game says so).
+
+## The Spacecraft Hangar
 
 | Spacecraft | Parts | Connections | Repairs happen in |
 |---|---|---|---|
@@ -86,8 +108,9 @@ Everything is drawn in code (no image or model files), using Three.js:
 
 ## Pages
 
-- `index.html`: the Spacecraft Hangar and the game (`index.html#workshop` opens the mission list,
-  `index.html#craft-hubble` opens a spacecraft, `index.html#mars-rover` opens a mission)
+- `index.html`: the level chooser ("Which level would you like to try out?")
+- `beginner.html`, `intermediate.html`, `advanced.html`: the Spacecraft Hangar and the game at each level
+  (add `#workshop` for the mission list, `#craft-hubble` to open a spacecraft, `#mars-rover` to open a mission)
 - `tutorial.html`: the detailed tutorial (the goal, the screen explained, plain-English space science,
   an interactive rocket-equation slider, a full walkthrough, finale controls and scoring)
 
@@ -141,6 +164,8 @@ space-mission-cube/
     ├── viewer3d.js     3D workshop: filmic lighting, soft shadows, rotate/zoom, click-to-swap, highlight glow
     ├── finale3d.js     Launch cinematic + the three playable 3D missions
     ├── ui.js           Screens: mission select, workshop, swap drawer, win screen, reveal
+    ├── level.js        Level settings, simple words for every part (Beginner), the word-helper glossary
+    ├── launchvehicles.js  Detailed launch rockets (real proportions, staging, fairings, payloads)
     ├── craftdata.js    ← Hangar data: real spacecraft, parts, connections, vulnerabilities, diagnostic faults
     ├── craftmodels.js  Detailed 3D models of the five real spacecraft (every part tagged by id)
     ├── fx.js           Cinematic effects: bloom, outlines, film grade, Milky Way, Earth, Mars/Moon terrain

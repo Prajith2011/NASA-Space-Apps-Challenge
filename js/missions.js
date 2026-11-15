@@ -54,7 +54,7 @@
             id: "launch", label: "Launch Vehicle", icon: "🚀",
             options: [
               { id: "a401", name: "Atlas V 401", note: "Cheapest ride, smallest lift.", cap: 3400, cost: 150 },
-              { id: "a541", name: "Atlas V 541", note: "Five side boosters for extra lift.", cap: 3700, cost: 220 },
+              { id: "a541", name: "Atlas V 541", note: "Four strap-on solid boosters for extra lift.", cap: 3700, cost: 220 },
               { id: "d4h", name: "Delta IV Heavy", note: "Huge lift, huge price.", cap: 5500, cost: 400 },
             ],
           },
